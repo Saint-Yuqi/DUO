@@ -1,0 +1,225 @@
+<title>Duo Ledger</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+/* Layout: a lab notebook — one measure for prose (68ch), full-bleed scrolling tables, detail panel docked under the row you open. */
+:root {
+  --bg: #f6f5f1; --surface: #ffffff; --fg: #1d2126; --muted: #5f6872; --line: #d9d6cd; --line-strong: #b9b4a7;
+  --accent: #1f6f78; --accent-ink: #ffffff; --left: #2b63a8; --right: #b8651a;
+  --ok: #2e7d4f; --warn: #a66b00; --bad: #a83a2e; --soft: #ebe9e2; --code: #eef0ee;
+  --font-sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace; --font-display: "IBM Plex Serif", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15181c; --surface: #1d2126; --fg: #e8e6e0; --muted: #a2a8af; --line: #333a42; --line-strong: #4a535c;
+  --accent: #5fb7bf; --accent-ink: #0e1a1c; --left: #7fb0ea; --right: #e59a55; --ok: #6cc38f; --warn: #e0b24a; --bad: #e5796c; --soft: #242a31; --code: #22282e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #15181c; --surface: #1d2126; --fg: #e8e6e0; --muted: #a2a8af; --line: #333a42; --line-strong: #4a535c;
+  --accent: #5fb7bf; --accent-ink: #0e1a1c; --left: #7fb0ea; --right: #e59a55; --ok: #6cc38f; --warn: #e0b24a; --bad: #e5796c; --soft: #242a31; --code: #22282e; color-scheme: dark }
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-sans); -webkit-font-smoothing: antialiased }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px; padding-inline: 16px }
+header.top { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: flex-end; justify-content: space-between; border-bottom: 2px solid var(--fg); padding-bottom: 14px; margin-bottom: 22px }
+h1 { font: 600 34px/1.1 var(--font-display); margin: 0; letter-spacing: -0.01em; text-wrap: balance }
+h1 small { display: block; font: 500 13px/1.4 var(--font-sans); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px }
+h2 { font: 600 22px/1.2 var(--font-display); margin: 44px 0 10px; text-wrap: balance }
+h3 { font: 600 15px/1.3 var(--font-sans); margin: 22px 0 8px }
+p, li { max-width: 68ch }
+.meta { font: 13px/1.5 var(--font-mono); color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px }
+.meta a, a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent }
+a:hover { border-bottom-color: var(--accent) }
+nav.toc { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; margin-bottom: 8px }
+.counts { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0 }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line-strong); font: 500 12px/1.6 var(--font-mono); white-space: nowrap }
+.pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block }
+.s-complete i { background: var(--ok) } .s-evaluating i, .s-training i { background: var(--warn) } .s-aborted i { background: var(--bad) } .s-partial i { background: var(--muted) }
+.banner { border-left: 4px solid var(--accent); background: var(--surface); padding: 10px 14px; margin: 14px 0 0; max-width: 90ch }
+.banner b { color: var(--accent) }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); margin-top: 8px }
+table { border-collapse: collapse; width: 100%; font-size: 14px }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top }
+th { font: 600 12px/1.4 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--soft); position: sticky; top: 0 }
+td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap }
+td.num.best { font-weight: 600 }
+tr.group td { background: var(--soft); font-style: italic; color: var(--muted); padding-block: 4px }
+tr.bold td:first-child { font-weight: 600 }
+.src { display: inline-block; font: 500 11px/1.5 var(--font-mono); padding: 0 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; border: 1px solid var(--line-strong); color: var(--muted) }
+.src.run { border-color: var(--accent); color: var(--accent); cursor: pointer }
+.src.planned { border-style: dashed }
+.note { color: var(--muted); font-size: 12.5px }
+tr.run-row { cursor: pointer } tr.run-row:hover td { background: var(--soft) }
+tr.run-row.open td { background: var(--soft) }
+.detail { background: var(--bg); border-bottom: 1px solid var(--line-strong) }
+.detail .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 22px; padding: 12px 10px 14px }
+.detail dl { margin: 0; min-width: 0 } .detail dt { font: 600 11px/1.5 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-top: 8px }
+.detail dd { margin: 0; font-size: 13.5px; overflow-wrap: anywhere } .detail dd code, code { font: 12.5px var(--font-mono); background: var(--code); padding: 1px 4px; border-radius: 3px }
+.detail pre { margin: 0; font: 12.5px/1.45 var(--font-mono); background: var(--code); padding: 8px 10px; overflow-x: auto; white-space: pre-wrap }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 4px; font-size: 13px }
+.filters select, .filters input { font: 13px var(--font-sans); padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); color: var(--fg) }
+button { font: 500 12.5px var(--font-sans); padding: 5px 10px; border: 1px solid var(--accent); background: var(--surface); color: var(--accent); border-radius: 4px; cursor: pointer }
+button:hover, button:focus-visible { background: var(--accent); color: var(--accent-ink); outline: none }
+button.ghost { border-color: var(--line-strong); color: var(--muted) } button.ghost:hover { background: var(--soft); color: var(--fg) }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0 }
+.caption { font-size: 13px; color: var(--muted); max-width: 90ch; margin: 4px 0 0 }
+.tasks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 3px 14px; font: 11.5px/1.5 var(--font-mono); padding: 8px 10px 12px }
+.tasks .t { display: grid; grid-template-columns: 1fr 34px 34px; gap: 4px; align-items: center; min-width: 0 } .tasks .t span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted) }
+.bar { height: 10px; background: var(--soft); position: relative; border-radius: 2px } .bar b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 2px } .bar.r b { background: var(--right) }
+.variants .v { border-top: 1px solid var(--line); padding: 12px 0 } .variants .v:first-child { border-top: 2px solid var(--fg) }
+.variants .head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline } .variants .head b { font-size: 15px } .variants .head .date { font: 12px var(--font-mono); color: var(--muted) }
+.variants .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 4px 20px; margin-top: 6px; font-size: 13.5px }
+.variants .grid div b { font: 600 11px/1.5 var(--font-sans); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); display: block }
+.variants .diff { border-left: 3px solid var(--right); padding-left: 10px; margin-top: 6px; font-size: 13.5px }
+.stream { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px } .stream.l { background: var(--left) } .stream.r { background: var(--right) }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none }
+.toast.show { opacity: 1 }
+kbd { font: 12px var(--font-mono); background: var(--code); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--line) }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none } }
+@media (max-width: 640px) { h1 { font-size: 26px } td, th { padding: 6px 7px } }
+</style>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1><small>Duo action head · experiment ledger</small>Duo Ledger</h1>
+    <div class="meta" id="meta"></div>
+    <div class="counts" id="counts"></div>
+  </div>
+  <nav class="toc">
+    <a href="#tables">Paper tables</a><a href="#runs">Runs</a><a href="#variants">Head versions</a><a href="#protocols">Protocols</a><a href="#maintain">How to maintain</a>
+  </nav>
+</header>
+<div class="banner" id="banner"></div>
+
+<h2 id="tables">Paper tables</h2>
+<p class="caption">Mirrors <code>table/*.tex</code> of the Duo-WAM Overleaf project (GitHub mirror pikonguwu/Duo-WAM). Every cell says where its number comes from: <span class="src run">run</span> is one of our runs (click it), <span class="src">leaderboard</span> is an external snapshot, <span class="src planned">planned</span> has no number yet. "Copy LaTeX" gives the table in the Overleaf file's shape.</p>
+<div id="tables-root"></div>
+
+<h2 id="runs">Runs</h2>
+<p class="caption">One row per run. Click a row for the full record: backbone, head version, data, training recipe, machine, code paths (cluster source + the verbatim copy in this repo), weight location and whether it still exists, evaluation state, notes, per-task rates.</p>
+<div class="filters">
+  <label>Protocol <select id="f-protocol"><option value="">all</option></select></label>
+  <label>Family <select id="f-family"><option value="">all</option></select></label>
+  <label>Status <select id="f-status"><option value="">all</option></select></label>
+  <input id="f-text" type="search" placeholder="search id / label / notes" aria-label="search runs">
+  <button class="ghost" id="copy-json">Copy ledger JSON</button>
+</div>
+<div class="tablewrap"><table id="runs-table"><thead><tr>
+  <th>Run</th><th>Backbone</th><th>Head version</th><th>Protocol</th><th>Status</th><th class="num">Clean</th><th class="num">Random</th><th class="num">Overall</th><th>Weights</th><th>Date</th>
+</tr></thead><tbody id="runs-body"></tbody></table></div>
+
+<h2 id="variants">Head versions</h2>
+<p class="caption">Every Duo head that exists in code, in order, with what it shares and what changed. <span class="stream l"></span>left / <span class="stream r"></span>right streams; the coupling column is the only inter-arm path in each version.</p>
+<div class="variants" id="variants-root"></div>
+
+<h2 id="protocols">Protocols</h2>
+<div id="protocols-root"></div>
+
+<h2 id="maintain">How to maintain</h2>
+<ol>
+  <li>Edit <code>ledger/runs.yaml</code> (one entry per run; set <code>status: superseded</code> instead of deleting). New head version → <code>ledger/variants.yaml</code>. New external number → <code>ledger/external.yaml</code> with source + snapshot date. Table layout → <code>ledger/tables.yaml</code>.</li>
+  <li>Finished evaluation → <code>python eval/robotwin/summarize.py &lt;run_root&gt; --run-id &lt;id&gt;</code> prints the <code>results:</code> block and writes the per-task file.</li>
+  <li><code>python ledger/build.py</code> regenerates <code>docs/index.html</code>, <code>docs/ledger.json</code> and <code>paper/tables/*.tex</code>; then <code>bash scripts/push_remotes.sh</code> pushes to GitHub and Codeup. The page is also republished as a claude.ai artifact from <code>docs/artifact.html</code>.</li>
+  <li>Overleaf: copy <code>paper/tables/&lt;id&gt;.tex</code> over the table file in the Overleaf project (<code>scripts/sync_paper.sh</code> shows the diff). Numbers flow YAML → page → paper, never the other way.</li>
+</ol>
+<div class="toast" id="toast" role="status"></div>
+</div>
+<script>
+/*__LEDGER_DATA__*/
+(function () {
+  const D = window.LEDGER; const $ = (s, r = document) => r.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+  const fmt = (x, nd) => (x === null || x === undefined) ? "--" : (typeof x === "number" ? x.toFixed(nd ?? (Number.isInteger(x * 10) ? 1 : 2)) : esc(x));
+  const runsBy = Object.fromEntries(D.runs.map(r => [r.id, r]));
+  const toast = m => { const t = $("#toast"); t.textContent = m; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 1800); };
+  const copy = (text, msg) => { const done = () => toast(msg || "Copied"); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(() => fallback()); else fallback();
+    function fallback() { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (e) { toast("Select and copy manually"); } ta.remove(); } };
+
+  // header
+  $("#meta").innerHTML = `<span>built ${esc(D.build.time)}</span><span>git ${esc(D.build.git)}</span><a href="${D.links.github}">GitHub</a><a href="${D.links.codeup}">Codeup</a><a href="${D.links.paper_mirror}">Paper (Overleaf mirror)</a><a href="${D.links.leaderboard}">RoboTwin leaderboard</a>`;
+  $("#counts").innerHTML = Object.entries(D.build.counts).filter(([, n]) => n).map(([s, n]) => `<span class="pill s-${s}"><i></i>${n} ${s}</span>`).join("");
+  const official = D.runs.filter(r => r.protocol === "robotwin2_official" && r.status === "complete").length;
+  $("#banner").innerHTML = `<b>Protocol first.</b> ${official} of our runs are under the official RoboTwin 2.0 protocol (clean2500 train, 50 × 2 × 100 eval). Everything under <code>zzm500</code> or <code>fastwam_subset10</code> is internal and must not be compared with leaderboard numbers. Weights marked <span class="pill" style="font-size:11px">volatile</span> live on container-local disks and vanish on restart.`;
+
+  // paper tables
+  const srcTag = (s, planned) => {
+    if (!s) return `<span class="src planned">planned</span>`;
+    if (s.kind === "run") return `<span class="src run" data-run="${esc(s.id)}" title="${esc(s.label)}">run · ${esc(s.status)}</span>`;
+    return `<span class="src" title="${esc(s.source)}">leaderboard ${esc(s.snapshot)}</span>`;
+  };
+  const colName = { overall: "Overall", clean: "Clean", random: "Random." };
+  $("#tables-root").innerHTML = D.tables.map(t => {
+    let head, body = "";
+    if (t.id === "action_head_transfer") {
+      head = `<th>Base policy</th><th class="num">Native overall</th><th class="num">Duo overall</th><th class="num">Duo clean</th><th class="num">Duo random.</th><th class="num">Δ overall</th><th>Sources</th>`;
+      for (const g of t.groups) for (const r of g.rows) {
+        const n = (r.native || {}).results || {}, d = (r.duo || {}).results || {};
+        body += `<tr${r.bold ? ' class="bold"' : ""}><td>${esc(r.label)}${r.note ? `<div class="note">${esc(r.note)}</div>` : ""}</td><td class="num">${fmt(n.overall)}</td><td class="num">${fmt(d.overall)}</td><td class="num">${fmt(d.clean)}</td><td class="num">${fmt(d.random)}</td><td class="num">${r.delta === null || r.delta === undefined ? "--" : (r.delta > 0 ? "+" : "") + fmt(r.delta)}</td><td>native ${srcTag(r.native, r.planned_native)} duo ${srcTag(r.duo, r.planned_duo)}</td></tr>`;
+      }
+    } else {
+      head = `<th>Method</th>` + t.columns.map(c => `<th class="num">${colName[c] || c}</th>`).join("") + `<th>Source</th>`;
+      const allRows = t.groups.flatMap(g => g.rows);
+      const best = {}; for (const c of t.columns) best[c] = Math.max(...allRows.map(r => ((r.source || {}).results || {})[c] ?? -Infinity));
+      for (const g of t.groups) {
+        if (g.name) body += `<tr class="group"><td colspan="${t.columns.length + 2}">${esc(g.name)}</td></tr>`;
+        for (const r of g.rows) {
+          const res = (r.source || {}).results || {};
+          body += `<tr${r.bold ? ' class="bold"' : ""}><td>${esc(r.label)}${r.note ? `<div class="note">${esc(r.note)}</div>` : ""}</td>` + t.columns.map(c => `<td class="num${res[c] !== undefined && res[c] !== null && res[c] === best[c] ? " best" : ""}">${fmt(res[c])}</td>`).join("") + `<td>${srcTag(r.source, r.planned)}</td></tr>`;
+        }
+      }
+    }
+    return `<h3 id="t-${esc(t.id)}">${esc(t.id)} <span class="note">· ${esc(t.protocol)}${t.tex ? " · " + esc(t.tex) : " · not in the paper"}</span></h3><p class="caption">${esc(t.caption)}</p>
+      <div class="toolbar">${D.tex[t.id] ? `<button data-tex="${esc(t.id)}">Copy LaTeX</button>` : ""}</div>
+      <div class="tablewrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }).join("");
+  $("#tables-root").addEventListener("click", e => {
+    const b = e.target.closest("button[data-tex]"); if (b) return copy(D.tex[b.dataset.tex], `LaTeX for ${b.dataset.tex} copied`);
+    const s = e.target.closest(".src.run"); if (s) openRun(s.dataset.run, true);
+  });
+
+  // runs
+  const sel = (id, vals) => { const el = $(id); for (const v of vals) { const o = document.createElement("option"); o.value = v; o.textContent = v; el.appendChild(o); } };
+  const uniq = k => [...new Set(D.runs.map(r => r[k]).filter(Boolean))];
+  sel("#f-protocol", uniq("protocol")); sel("#f-family", uniq("family")); sel("#f-status", uniq("status"));
+  const weightsTag = r => { const w = r.weights || {}; if (w.deleted) return `<span class="pill" style="border-color:var(--bad);color:var(--bad)">deleted</span>`; if (w.persistent === false) return `<span class="pill" style="border-color:var(--warn);color:var(--warn)">volatile</span>`; if (w.path) return `<span class="pill">kept</span>`; return ""; };
+  const dateOf = r => { const d = r.dates || {}; return d.eval_end || d.train_end || d.eval_start || d.train_start || d.aborted || ""; };
+  const kv = (obj) => obj && typeof obj === "object" ? Object.entries(obj).map(([k, v]) => `<code>${esc(k)}</code> ${esc(typeof v === "object" ? JSON.stringify(v) : v)}`).join(" · ") : esc(obj);
+  function detailHTML(r) {
+    const pt = D.per_task[r.id];
+    const tasks = pt ? `<dt>Per-task success (clean | random)</dt><dd><div class="tasks">${Object.keys(pt.demo_clean || pt.demo_randomized || {}).sort().map(t => { const c = (pt.demo_clean || {})[t], rr = (pt.demo_randomized || {})[t]; return `<div class="t" title="${esc(t)} clean ${c ?? "--"} random ${rr ?? "--"}"><span>${esc(t)}</span><span class="bar"><b style="width:${c ?? 0}%"></b></span><span class="bar r"><b style="width:${rr ?? 0}%"></b></span></div>`; }).join("")}</div></dd>` : "";
+    const v = D.variants.find(x => x.id === r.variant);
+    return `<div class="grid">
+      <dl><dt>Run</dt><dd><code>${esc(r.id)}</code> — ${esc(r.label)}</dd><dt>Backbone</dt><dd>${esc(r.backbone)}</dd><dt>Head version</dt><dd>${v ? `<a href="#v-${esc(v.id)}">${esc(v.name)}</a>` : esc(r.variant)}</dd><dt>Data</dt><dd>${esc(r.data)}</dd><dt>Protocol</dt><dd><code>${esc(r.protocol)}</code> — ${esc((D.protocols[r.protocol] || {}).name || "")}</dd></dl>
+      <dl><dt>Training</dt><dd>${kv(r.train)}</dd><dt>Machine</dt><dd>${esc(r.machine)}</dd><dt>Dates</dt><dd>${kv(r.dates)}</dd><dt>Evaluation</dt><dd>${kv(r.eval)}</dd><dt>Results</dt><dd>${kv(r.results)}</dd></dl>
+      <dl><dt>Code</dt><dd>${kv(r.code)}</dd><dt>Weights</dt><dd>${kv(r.weights)}</dd><dt>Notes</dt><dd>${esc(r.notes || "")}</dd>${tasks}</dl></div>`;
+  }
+  function rowHTML(r) {
+    const res = r.results || {};
+    return `<tr class="run-row" data-id="${esc(r.id)}" id="run-${esc(r.id)}"><td><b>${esc(r.label)}</b><div class="note"><code>${esc(r.id)}</code></div></td><td>${esc((r.backbone || "").split(/[,(;]/)[0])}</td><td>${esc(r.variant)}</td><td><code>${esc(r.protocol)}</code></td><td><span class="pill s-${esc(r.status)}"><i></i>${esc(r.status)}</span></td><td class="num">${fmt(res.clean)}</td><td class="num">${fmt(res.random)}</td><td class="num">${fmt(res.overall)}</td><td>${weightsTag(r)}</td><td class="note">${esc(dateOf(r))}</td></tr>`;
+  }
+  function render() {
+    const fp = $("#f-protocol").value, ff = $("#f-family").value, fs = $("#f-status").value, q = $("#f-text").value.trim().toLowerCase();
+    const rows = D.runs.filter(r => (!fp || r.protocol === fp) && (!ff || r.family === ff) && (!fs || r.status === fs) && (!q || JSON.stringify(r).toLowerCase().includes(q)));
+    $("#runs-body").innerHTML = rows.map(rowHTML).join("") || `<tr><td colspan="10" class="note">No run matches these filters.</td></tr>`;
+  }
+  function openRun(id, scroll) {
+    const row = $(`#run-${CSS.escape(id)}`); if (!row) { ["#f-protocol", "#f-family", "#f-status"].forEach(s => $(s).value = ""); $("#f-text").value = ""; render(); return openRun(id, scroll); }
+    const next = row.nextElementSibling; const isOpen = next && next.classList.contains("detail");
+    document.querySelectorAll("tr.detail").forEach(d => d.remove()); document.querySelectorAll("tr.run-row.open").forEach(x => x.classList.remove("open"));
+    if (isOpen) return;
+    const tr = document.createElement("tr"); tr.className = "detail"; tr.innerHTML = `<td colspan="10">${detailHTML(runsBy[id])}</td>`;
+    row.after(tr); row.classList.add("open"); if (scroll) row.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+  ["#f-protocol", "#f-family", "#f-status"].forEach(s => $(s).addEventListener("change", render)); $("#f-text").addEventListener("input", render);
+  $("#runs-body").addEventListener("click", e => { const tr = e.target.closest("tr.run-row"); if (tr) openRun(tr.dataset.id, false); });
+  $("#copy-json").addEventListener("click", () => copy(JSON.stringify(D, null, 1), "Ledger JSON copied (also at docs/ledger.json in the repo)"));
+  render();
+
+  // variants
+  $("#variants-root").innerHTML = D.variants.map(v => `<div class="v" id="v-${esc(v.id)}"><div class="head"><b>${esc(v.name)}</b><span class="date">${esc(v.date)} · <code>${esc(v.id)}</code></span></div>
+    <div class="grid"><div><b>Host</b>${esc(v.host)}</div><div><b>Streams</b><span class="stream l"></span><span class="stream r"></span>${esc(v.streams)} <span class="note">(${esc(v.stream_dim)}-d each)</span></div><div><b>Coupling</b>${esc(v.coupling)}</div><div><b>Gate</b>${esc(v.gate)}</div><div><b>Init</b>${esc(v.init)}</div><div><b>Code</b>${esc(v.code)}<br><span class="note">repo: ${esc(v.repo)}</span></div><div><b>Runs</b>${esc((v.runs || []).join(", "))}</div></div>
+    ${v.diff_from ? `<div class="diff"><b>Changed:</b> ${esc(v.diff_from)}</div>` : ""}</div>`).join("");
+
+  // protocols
+  $("#protocols-root").innerHTML = `<div class="tablewrap"><table><thead><tr><th>Key</th><th>Train</th><th>Eval</th><th>Note</th></tr></thead><tbody>` + Object.entries(D.protocols).map(([k, p]) => `<tr><td><code>${esc(k)}</code><div class="note">${esc(p.name)}</div></td><td>${esc(p.train || "")}</td><td>${esc(p.eval || "")}</td><td class="note">${esc(p.note || "")}${p.reference ? `<br>${esc(p.reference)}` : ""}</td></tr>`).join("") + `</tbody></table></div>`;
+
+  // deep link #run-<id> / #v-<id> / #t-<id>
+  const h = location.hash.slice(1); if (h.startsWith("run-")) openRun(h.slice(4), true);
+})();
+</script>

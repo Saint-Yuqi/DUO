@@ -1,0 +1,174 @@
+# Paper tables, mirroring ~/Duo-WAM/table/*.tex (Overleaf via github.com/pikonguwu/Duo-WAM). Each cell names where its
+# number comes from: {run: <runs.yaml id>} or {external: <external.yaml id>} or {planned: true}. build.py renders the
+# HTML and regenerates paper/tables/<id>.tex so the Overleaf table can be replaced wholesale.
+tables:
+  - id: robotwin_main
+    tex: table/robotwin_main.tex
+    caption: Main comparison on RoboTwin 2.0 under the official protocol. All values are success rates (%); higher is better.
+    protocol: robotwin2_official
+    columns: [overall, clean, random]
+    groups:
+      - name: Single-model policies
+        rows:
+          - label: "StarVLA"
+            external: lb_starvla
+          - label: "FLOWER w/ Duo-DiT (pretrained FlowBlock)"
+            run: flower_duodit_clean2500
+          - label: "FLOWER w/ custom Duo-DiT + RoPE"
+            run: flower_customduodit_rope_clean2500
+          - label: "π0.5"
+            external: lb_pi05
+          - label: "SmolVLA (our run)"
+            run: smolvla_clean2500
+          - label: "Fast-WAM"
+            external: lb_fastwam
+          - label: "OpenWAM"
+            external: lb_openwam
+          - label: "LightWAM"
+            planned: true
+            note: "undefined in the paper draft; no bib entry"
+      - name: Dual-model policies
+        rows:
+          - label: "AnyBimanual (RVT-LF / PerAct-LF retrain)"
+            planned: true
+      - name: Ours
+        rows:
+          - label: "π0.5 w/ Duo-DiT (gate open)"
+            run: pi05_duo_open_clean2500
+            bold: true
+          - label: "OpenWAM w/ native dual Duo-DiT"
+            run: openwam_native_dual_clean2500
+            bold: true
+          - label: "DuoWAM (Fast-WAM backbone, full model)"
+            planned: true
+  - id: action_head_transfer
+    tex: table/action_head_transfer.tex
+    caption: Transfer of the same Duo-DiT action head across policy backbones on RoboTwin 2.0. All values are success rates (%).
+    protocol: robotwin2_official
+    columns: [native_overall, duo_overall, duo_clean, duo_random, delta_overall]
+    rows:
+      - label: "StarVLA"
+        planned: true
+      - label: "π0.5"
+        native: lb_pi05
+        duo: pi05_duo_open_clean2500
+      - label: "SmolVLA"
+        native: smolvla_clean2500
+        planned_duo: true
+      - label: "Fast-WAM"
+        native: lb_fastwam
+        planned_duo: true
+        note: "Duo-FastWAM stage1 exists only under the 10-task non-leaderboard protocol"
+      - label: "OpenWAM"
+        native: lb_openwam
+        duo: openwam_native_dual_clean2500
+      - label: "FLOWER"
+        planned_native: true
+        duo: flower_duodit_clean2500
+        note: "no single-stream FLOWER number on clean2500 yet"
+  - id: openwam_flower_duo_dit
+    tex: table/openwam_flower_duo_dit.tex
+    caption: Duo-DiT action-head ablation on OpenWAM, FLOWER, and LightWAM under the RoboTwin 2.0 protocol.
+    protocol: robotwin2_official
+    columns: [overall, clean, random]
+    groups:
+      - name: OpenWAM
+        rows:
+          - label: "OpenWAM"
+            external: lb_openwam
+          - label: "OpenWAM w/ Duo-DiT (native dual)"
+            run: openwam_native_dual_clean2500
+          - label: "OpenWAM w/ Duo-DiT (legacy, aborted)"
+            run: openwam_duodit_legacy
+      - name: FLOWER
+        rows:
+          - label: "FLOWER (single stream)"
+            planned: true
+            note: "never trained on clean2500 — the 'FLOWER baseline' in old monitors was the FlowBlock Duo run"
+          - label: "FLOWER w/ Duo-DiT (pretrained FlowBlock)"
+            run: flower_duodit_clean2500
+          - label: "FLOWER w/ custom Duo-DiT (scratch 8x512)"
+            run: flower_customduodit_clean2500
+          - label: "FLOWER w/ custom Duo-DiT + RoPE"
+            run: flower_customduodit_rope_clean2500
+      - name: LightWAM
+        rows:
+          - label: "LightWAM"
+            planned: true
+          - label: "LightWAM w/ Duo-DiT"
+            planned: true
+  - id: cross_attention_ablation
+    tex: table/cross_attention_ablation.tex
+    caption: Controlled cross-attention ablation within DuoWAM (RT = RoboTwin 2.0, RD = RoboDojo).
+    protocol: robotwin2_official
+    columns: [overall, clean, random]
+    rows:
+      - label: "DuoWAM (bidirectional cross-attention)"
+        planned: true
+      - label: "DuoWAM w/o cross-attention"
+        planned: true
+        note: "the zero-init gain makes 'w/o' = the same model at step 0; a trained 'w/o' run is still required"
+  - id: action_partition_ablation
+    tex: table/action_partition_ablation.tex
+    caption: Action-partition ablation (arm-semantic vs mixed vs joint 14D reference).
+    protocol: robotwin2_official
+    columns: [overall, clean, random]
+    rows:
+      - label: "Joint 14D reference"
+        planned: true
+        note: "duo.Partition.joint(14) in duo/head.py"
+      - label: "Mixed partition"
+        planned: true
+        note: "duo.Partition.mixed(7) = [qL1-3, qR1-3, gL] | [qL4-6, qR4-6, gR]"
+      - label: "Arm-semantic DuoWAM"
+        planned: true
+  - id: zzm500_internal
+    tex: null
+    caption: Internal zzm 500-episode protocol (NOT leaderboard-comparable). Kept for the design history of the gate.
+    protocol: zzm500
+    columns: [overall, clean, random]
+    groups:
+      - name: zzm reference
+        rows:
+          - label: "π0.5 baseline (zzm)"
+            external: zzm_pi05_baseline
+          - label: "π0.5 + g3 (zzm)"
+            external: zzm_pi05_g3
+      - name: DINO-DiT (ours, from scratch, 10 epochs)
+        rows:
+          - label: "R0 two per-arm DiTs (B9)"
+            run: dit_R0
+          - label: "R1 joint 14-D, three cameras"
+            run: dit_R1
+          - label: "R2 joint + cross-arm masking"
+            run: dit_R2
+          - label: "R3 Duo (rule gate)"
+            run: dit_R3
+          - label: "R3b Duo init from R0"
+            run: dit_R3b
+          - label: "R3c Duo init from R0 + coupled-frame weighting"
+            run: dit_R3c
+      - name: π0.5-Duo (ours)
+        rows:
+          - label: "π0.5-Duo v1 (rule gate)"
+            run: pi05_duo
+          - label: "π0.5-Duo v1 + g3"
+            run: pi05_duo_g3
+          - label: "π0.5-Duo v2 (anticipatory gate + head)"
+            run: pi05_duo_v2
+          - label: "π0.5-Duo v2 gate only"
+            run: pi05_duo_v2_gate
+          - label: "π0.5-Duo v2 no head"
+            run: pi05_duo_v2_nohead
+          - label: "π0.5-Duo v3 (contact tokens)"
+            run: pi05_duo_v3
+  - id: fastwam_subset10_internal
+    tex: null
+    caption: Duo-FastWAM 10-task check against the official Fast-WAM weights (both saw randomized training scenes; not leaderboard-comparable).
+    protocol: fastwam_subset10
+    columns: [clean, random]
+    rows:
+      - label: "Fast-WAM official weights (wsh eval)"
+        external: wsh_fastwam_official_subset10
+      - label: "Duo-FastWAM stage1 (shared blocks, frozen video, 3k steps)"
+        run: duo_fastwam_stage1_open_frozenvideo_fix

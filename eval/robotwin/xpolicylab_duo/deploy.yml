@@ -1,0 +1,14 @@
+# XPolicyLab deploy config for the Duo policy-server bridge (see model.py; untested skeleton).
+policy_name: Duo
+protocol: ws
+host: localhost
+bench_name: null
+task_name: null
+env_cfg_type: null
+seed: null
+eval_batch: false
+action_type: joint
+duo_server_host: 127.0.0.1
+duo_server_port: 19700
+result_dir: "./results/duo/"
+port: 6000

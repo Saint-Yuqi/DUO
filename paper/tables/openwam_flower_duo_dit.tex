@@ -1,0 +1,28 @@
+\begin{table}[t]
+  \caption{Duo-DiT action-head ablation on OpenWAM, FLOWER, and LightWAM under the RoboTwin 2.0 protocol. Generated from ledger/ (uncommitted, 2026-10-08); edit the YAML, not this file.}
+  \label{tab:openwam_flower_duo_dit}
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.08}
+  \begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lccc@{}}
+    \toprule
+    Method & Overall & Clean & Random. \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textit{OpenWAM}} \\
+    OpenWAM & 69.05 & 89.40 & 48.70 \\
+    OpenWAM w/ Duo-DiT (native dual) & -- & -- & -- \\
+    OpenWAM w/ Duo-DiT (legacy, aborted) & -- & 0.00 & -- \\
+    \addlinespace[2pt]
+    \multicolumn{4}{@{}l}{\textit{FLOWER}} \\
+    FLOWER (single stream) & -- & -- & -- \\
+    FLOWER w/ Duo-DiT (pretrained FlowBlock) & 47.46 & 68.30 & 26.62 \\
+    FLOWER w/ custom Duo-DiT (scratch 8x512) & 42.11 & 65.38 & 18.84 \\
+    FLOWER w/ custom Duo-DiT + RoPE & 43.03 & 66.50 & 19.56 \\
+    \addlinespace[2pt]
+    \multicolumn{4}{@{}l}{\textit{LightWAM}} \\
+    LightWAM & -- & -- & -- \\
+    LightWAM w/ Duo-DiT & -- & -- & -- \\
+    \bottomrule
+  \end{tabular*}
+\end{table}

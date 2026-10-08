@@ -1,0 +1,20 @@
+\begin{table*}[t]
+  \caption{Transfer of the same Duo-DiT action head across policy backbones on RoboTwin 2.0. All values are success rates (\%). Generated from ledger/ (uncommitted, 2026-10-08); edit the YAML, not this file.}
+  \label{tab:action_head_transfer}
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.08}
+  \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccccc@{}}
+    \toprule
+    Base policy & Native overall & Duo overall & Duo clean & Duo random. & $\Delta$ overall & Status \\
+    \midrule
+    StarVLA & -- & -- & -- & -- & -- & Planned \\
+    $\pi$0.5 & 58.35 & 63.36 & 80.36 & 46.36 & +5.01 & Completed \\
+    SmolVLA & 16.27 & -- & -- & -- & -- & Planned \\
+    Fast-WAM & 39.85 & -- & -- & -- & -- & Planned \\
+    OpenWAM & 69.05 & -- & -- & -- & -- & Evaluating \\
+    FLOWER & -- & 47.46 & 68.30 & 26.62 & -- & Completed \\
+    \bottomrule
+  \end{tabular*}
+\end{table*}

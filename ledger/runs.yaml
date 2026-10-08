@@ -1,0 +1,631 @@
+# Every run we trained or evaluated. One entry per run; never delete, set status: superseded instead.
+# Numbers: success rate in %, overall = mean(clean, random). `*_n` = successes/episodes behind the number.
+# Weights: `persistent: false` means the path is on a container-local disk (/tmp or /root on PAI-DSW) and vanishes on restart.
+# To add a run: copy an entry, fill it, run `python ledger/build.py`, commit, push (scripts/push_remotes.sh).
+# Style: keep nested dicts in block form with quoted strings (flow mappings {a: b} break on commas / braces inside values).
+runs:
+  # ───────────────────────────── official RoboTwin 2.0 protocol (clean2500) ─────────────────────────────
+  - id: pi05_duo_open_clean2500
+    label: "π0.5 + Duo-DiT, gate always open"
+    family: pi05
+    backbone: "π0.5 (PaliGemma-3B VLM + 300M action expert; lerobot 0.6.1 PI05Policy), init zzm RoboTwin base ckpt"
+    variant: pi05_duo_v1_open
+    protocol: robotwin2_official
+    data: "clean2500 (/mnt/cpfs/yangyq/data/robotwin_clean2500, LeRobot v3 subset of robotwin_unified; episode ids t*550+j, j<50)"
+    status: complete
+    dates: {train_start: 2026-09-27, train_end: 2026-09-28, eval_end: 2026-09-28}
+    train: {steps: 45000, global_batch: 8, per_gpu_batch: 4, lr: 2.5e-5, warmup: 1000, decay_steps: 45000, seed: 42, grad_ckpt: true, wall_h: 15.2}
+    machine: "quic5000 GPU4,5 (2×H20); eval sharded A (5000 GPU4,5, 12 tasks) / B (5001 GPU0,2,5, 19) / C (5001 GPU4,6,7, 19)"
+    code:
+      source: "/mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo) + run_train.sh"
+      flags: "DUO_TRAIN_GATE=1"
+      repo: duo/adapters/pi05_lerobot/comparison.py
+      run_dir: "/mnt/cpfs/yangyq/pi05_duo/runs/duo_open_clean2500 (+_evalB, _evalC; EVAL_SHARDS.json)"
+    weights:
+      path: "/root/yangyq/pi05_duo/duo_open_clean2500/training (quic5000)"
+      persistent: false
+      backup: "unknown — check /mnt/oss/research/yangyq/checkpoints before the container restarts"
+    eval: {episodes: 100, summary: "runs/duo_open_clean2500*/summary.json", runtime: "zzm eval_official.py / eval_task.py"}
+    results: {clean: 80.36, random: 46.36, overall: 63.36, clean_n: 4018/5000, random_n: 2318/5000}
+    per_task: ledger/per_task/pi05_duo_open_clean2500.json
+    notes: "Paired vs leaderboard π0.5 (70.7/46.0): clean +9.7 (t=4.0), random +0.3 (t=0.2). No same-recipe plain π0.5 control was trained — the native column of the transfer table is the leaderboard row, whose recipe differs. Overleaf currently shows 80.4 / 46.4 / 63.4 (rounded)."
+  - id: flower_duodit_clean2500
+    label: "FLOWER + Duo-DiT (pretrained FlowBlock streams)"
+    family: flower
+    backbone: "FLOWER VLA (Florence-2-base, flower_bimanual_v3.FlowerBimanual) + pretrained FLOWER head 360000_model_weights.pt (240/264 tensors loaded)"
+    variant: flower_duo_flowblock
+    protocol: robotwin2_official
+    data: "clean2500 frame cache /mnt/workspace/yangyq/data/flower_robotwin_clean2500 (224², 3 cams; OSS backup oss://quic-research/yangyq/data/cache/flower_robotwin_clean2500/)"
+    status: complete
+    dates: {train_start: 2026-10-03, train_end: 2026-10-04, eval_end: 2026-10-05}
+    train: {max_steps: 60000, best_step: 56000, global_batch: 32, per_gpu_batch: 2, accum: 4, gpus: 4, lr_head: 1e-4, lr_vlm: 2e-5, val_every: 2000, patience: 6, seed: 42, selection: best val loss}
+    machine: "quic5000 GPU4-7 (4×H20); eval 4 GPUs × 6 simulator workers"
+    code:
+      source: "/mnt/workspace/yangyq/flower_duodit_robotwin: flower_duodit.py, train.py, policy_server.py, run_eval_fast.py"
+      repo: "duo/adapters/flower_flowblock.py + eval/robotwin/legacy_adapter/"
+    weights:
+      path: /mnt/workspace/yangyq/flower_duodit_robotwin/training/best.pt
+      persistent: true
+      deleted: "2026-10-06 (3.04 GB; listed in /tmp/robotwin_native_dual/deleted_evaluated_weights.json)"
+      backup: "preview step 52000 only → oss://quic-post-train/yangyq/flower_duodit_robotwin/preview_step52000.pt"
+    eval: {episodes: 100, summary: eval_summary.json, per_task_source: "eval_results/<task>/<setting>/result.json"}
+    results: {clean: 68.30, random: 26.62, overall: 47.46, clean_n: 3415/5000, random_n: 1331/5000}
+    per_task: ledger/per_task/flower_duodit_clean2500.json
+    notes: "Was mislabelled 'FLOWER baseline' in monitor.py / robotwin_duodit_results.html; it IS a Duo head (two FlowBlock streams + CrossArm). No single-stream FLOWER number exists on clean2500. Preview at step 52000 on 10 eps/task gave 76.0 / 24.0."
+  - id: flower_customduodit_clean2500
+    label: "FLOWER + custom Duo-DiT (scratch 8×512 DiTBlocks)"
+    family: flower
+    backbone: "FLOWER Florence-2-base encoder (same as flower_duodit_clean2500), FLOWER action blocks discarded"
+    variant: flower_duo_custom
+    protocol: robotwin2_official
+    data: same cache as flower_duodit_clean2500
+    status: complete
+    dates: {train_start: 2026-10-04, eval_end: 2026-10-05}
+    train: {max_steps: 60000, best_step: 58000, global_batch: 32, per_gpu_batch: 8, accum: 1, gpus: 4, lr_head: 1e-4, lr_vlm: 2e-5, seed: 42, selection: best val loss}
+    machine: "quic5000 GPU4-7 (4×H20)"
+    code:
+      source: "/mnt/workspace/yangyq/flower_customduodit_robotwin: custom_dit.py, train_custom.py, policy_server_custom.py"
+      repo: "duo/adapters/flower_custom_dit.py (library form duo/head.py)"
+    weights:
+      path: /mnt/workspace/yangyq/flower_customduodit_robotwin/training/best.pt
+      persistent: true
+      deleted: "2026-10-06 (1.31 GB)"
+      backup: none
+    eval: {episodes: 100, summary: eval_summary.json}
+    results: {clean: 65.38, random: 18.84, overall: 42.11, clean_n: 3269/5000, random_n: 942/5000}
+    per_task: ledger/per_task/flower_customduodit_clean2500.json
+    notes: "Same Duo layout as flower_duodit_clean2500 but scratch 8×512 blocks → shows only that the pretrained large FlowBlock beats a scratch small DiTBlock under the same Duo layout."
+  - id: flower_customduodit_rope_clean2500
+    label: "FLOWER + custom Duo-DiT + RoPE"
+    family: flower
+    backbone: same as flower_customduodit_clean2500
+    variant: flower_duo_custom_rope
+    protocol: robotwin2_official
+    data: same cache
+    status: complete
+    dates: {train_start: 2026-10-05, eval_end: 2026-10-06}
+    train: {max_steps: 60000, global_batch: 32, per_gpu_batch: 8, accum: 1, gpus: 4, lr_head: 1e-4, lr_vlm: 2e-5, seed: 42}
+    machine: "quic5000 GPU4-7 (4×H20)"
+    code:
+      source: "/tmp/robotwin_rope/flower: custom_dit.py, action_rope.py, train_custom.py (quic5000 /tmp)"
+      launch: /tmp/robotwin_rope/train_flower_rope.sh
+      repo: duo/adapters/flower_custom_dit_rope.py
+    weights:
+      path: /tmp/robotwin_rope/flower/training/best.pt
+      persistent: false
+      deleted: "2026-10-06 (1.31 GB)"
+      backup: none
+    eval: {episodes: 100, summary: /tmp/robotwin_rope/flower/eval_summary.json}
+    results: {clean: 66.50, random: 19.56, overall: 43.03, clean_n: 3325/5000, random_n: 978/5000}
+    per_task: ledger/per_task/flower_customduodit_rope_clean2500.json
+    notes: "Overleaf row 'Flower(+ROPE duo dit)'. The 'flower_eval_summary.json' in deleted_weight_evidence is this run (1.31 GB weight = custom head size), not a single-stream FLOWER."
+  - id: smolvla_clean2500
+    label: "SmolVLA (native, our training)"
+    family: smolvla
+    backbone: "SmolVLA (SmolVLM2-500M-Video-Instruct), lerobot smolvla policy, pretrained VLM weights"
+    variant: none
+    protocol: robotwin2_official
+    data: clean2500 LeRobot dataset /mnt/workspace/yangyq/data/robotwin_clean2500
+    status: complete
+    dates: {eval_end: 2026-10-05}
+    train: {steps: 20000, lr: 1e-4, warmup: 1000, decay_steps: 20000, chunk: 50, images: "3×256² (padded 512)", ckpt: step 20000}
+    machine: quic5000
+    code:
+      source: "/mnt/workspace/yangyq/smolvla_robotwin: train.json, run_eval_fast.py, eval_adapter/policy_server.py"
+    weights:
+      path: /mnt/workspace/yangyq/smolvla_robotwin/training/checkpoints/020000
+      persistent: true
+      deleted: "2026-10-06 (0.91 GB)"
+      backup: none
+    eval: {episodes: 100, summary: eval_summary.json}
+    results: {clean: 29.78, random: 2.76, overall: 16.27, clean_n: 1489/5000, random_n: 138/5000}
+    per_task: ledger/per_task/smolvla_clean2500.json
+    notes: "Native baseline for the transfer table (no Duo). The Overleaf robotwin_main row 'SmolVLA 29.78/2.76' is THIS run, not a leaderboard entry."
+  - id: openwam_native_dual_clean2500
+    label: "OpenWAM + native dual Duo-DiT (two pretrained ActionDiT experts, EEF)"
+    family: openwam
+    backbone: "OpenWAM-Alpha-Pretrain-Foundation-Model (Wan2.2-TI2V-5B video DiT trained, text encoder/VAE frozen), joint_self_attn MoT, mutual attention mask"
+    variant: openwam_native_dual
+    protocol: robotwin2_official
+    data: "clean_50 of all 50 tasks from the official HF zips (/tmp/robotwin_native_dual/data_raw/dataset), 549,787 windows, EEF action mode (80-d unified, slots 0-9/34-43), 33 frames stride 4, 384×320 canvas, color jitter 0.2"
+    status: evaluating
+    dates: {train_start: 2026-10-06, train_end: 2026-10-08, eval_start: 2026-10-08}
+    train: {epochs: 5, optimizer_steps: 10740, microsteps: 85905, global_batch: 256, per_gpu_batch: 4, accum: 8, gpus: 8, lr: 1e-4, betas: "0.9, 0.95", wd: 0.01, schedule: "cosine, warmup 0.05", lambda_video: 1, lambda_action: 1, precision: bf16, zero_stage: 2, grad_ckpt: true, step_time_s: 1.93}
+    machine: "quic5000 GPU0-7 (8×H20); eval 8 GPUs × 3 replicas"
+    code:
+      source: "/tmp/robotwin_native_dual: native_dual_dit.py, install_native_dual.py, train_robotwin_native_dual.sh, eval_robotwin_native_dual.sh, eval_summary.py (quic5000 /tmp, NOT persistent)"
+      repo: "duo/adapters/openwam_native_dual.py + duo/adapters/legacy/openwam_install_native_dual.py + eval/robotwin/legacy_adapter/eval_summary_openwam.py"
+    weights:
+      path: "/tmp/robotwin_native_dual/checkpoints/2026-10-06_14-19-25/checkpoint_step_85905.safetensors (selected by lowest training action loss over the last 1000 microsteps; candidates 76000/80000/84000/85905)"
+      persistent: false
+      backup: none yet
+    eval: {episodes: 100, started: "2026-10-08 12:52", progress: "2026-10-08 22:40 — 10 clean tasks complete (mean 99.0% on those); ETA 43–77 h from the 14:49 snapshot", summary_cmd: python eval_summary.py}
+    results: {clean: null, random: null, overall: null}
+    notes: "First Duo run on a WAM backbone that trains the video expert. Progress is pushed to a public ntfy.sh topic. Back up the checkpoint off /tmp before anything else."
+  - id: openwam_duodit_legacy
+    label: "OpenWAM + Duo-DiT legacy (joint_cross_attn, 14-D, frozen video)"
+    family: openwam
+    backbone: "OpenWAM-Alpha, variant joint_cross_attn, bridge layers 0,4,…,28, detach_bridge, video DiT frozen, 256×256"
+    variant: openwam_duo_legacy
+    protocol: robotwin2_official
+    data: clean2500 frame cache (dataloader robotwin_cache)
+    status: aborted
+    dates: {train_start: 2026-10-05, aborted: 2026-10-06}
+    train: {steps: "2000 (+ stage2 to 8000)", per_gpu_batch: 1, accum: 4, gpus: 1, lambda_video: 0}
+    machine: "quic5000 GPU4 (1×H20)"
+    code:
+      source: "/mnt/workspace/yangyq/openwam_duodit_robotwin: train_robotwin_duo_dit.sh, train_robotwin_duo_dit_stage2.sh, eval_robotwin_duo_dit.sh (CPFS copy /mnt/cpfs/yangyq/openwam_duodit_robotwin)"
+    weights:
+      path: checkpoints_stage2/2026-10-05_01-19-36/checkpoint_step_8000.safetensors
+      deleted: "2026-10-06 (23 GB, user request)"
+    eval: {episodes: 100, completed_episodes: 58, successes: 0}
+    results: {clean: 0.0, random: null, overall: null, clean_n: 0/58}
+    notes: "0 successes in 58 completed episodes → stopped by the user; superseded by openwam_native_dual_clean2500."
+  # ───────────────────────────── Fast-WAM 10-task check (not leaderboard protocol) ─────────────────────────────
+  - id: duo_fastwam_stage1_open_frozenvideo_fix
+    label: "Duo-FastWAM stage1 (shared blocks, video frozen, 3k steps)"
+    family: fastwam
+    backbone: "Fast-WAM (wsh @45d8e14 copy), official robotwin_uncond_3cam_384.pt start, DeepSpeed ZeRO-2"
+    variant: fastwam_duo_shared
+    protocol: fastwam_subset10
+    data: "RoboTwin 27,500 episodes (50 clean + 500 randomized per task) as the official weights; allowed_tasks_K2 T5 cache"
+    status: complete
+    dates: {train_end: 2026-09-28, eval_end: 2026-09-28}
+    train: {steps: 3000, global_batch: 16, per_gpu_batch: 4, accum: 2, gpus: 2, lr: 3e-5, video_expert: "frozen (DUO_FREEZE_VIDEO=1)", duo_cross: true}
+    machine: "quic5001 GPU1,3 (2×H20)"
+    code:
+      source: "/mnt/cpfs/yangyq/code/duo_fastwam: apply_duo_patch.py, patch_train_side.py, stage1_5001_v3.sh, eval_duo_wam_5001_v2.sh"
+      repo: "duo/adapters/fastwam_shared_stream.py, duo/adapters/legacy/fastwam_apply_duo_patch.py"
+    weights:
+      path: "quic5001 /root/yangyq/duo_fastwam_runs/stage1_open_frozenvideo_fix/checkpoints/weights/step_003000.pt"
+      persistent: false
+      backup: "oss://quic-research/yangyq/checkpoints/duo_fastwam/stage1_open_frozenvideo/ holds the PRE-fix step_003000; the fixed run's backup is unconfirmed"
+    eval: {tasks: 10, episodes: 100, results_dir: "quic5001 /root/yangyq/duo_fastwam_eval/"}
+    results: {clean: 77.4, random: 71.9, overall: null}
+    notes: "vs official weights 76.9 / 76.4 on the same 10 tasks (+0.5 t=0.2; −4.5 t=−0.9; open_microwave 58→18 and hanging_mug 70→48 drive the drop) — parity, no gain. The first stage1 (pre-fix) is void: Fast-WAM's trainer loads resume=*.pt after accelerator.prepare(), so under ZeRO-2 the official weights only acted at step 1; fixed in trainer.py (_load_weights_before_prepare). Clean-only Duo-FastWAM per leaderboard protocol estimated at ~8 GPU-days on 8×H20 and not started (user decision 09-28)."
+  # ───────────────────────────── zzm 500-episode internal protocol: DINO-DiT R-series ─────────────────────────────
+  - id: dit_R0
+    label: "R0 — two per-arm DiTs (B9 pair), no coupling"
+    family: dino_dit
+    backbone: "DINOv2-B pool2 + 8×512 DiT-flow, CLIP instruction token, future token; head + own wrist per arm"
+    variant: none
+    protocol: zzm500
+    data: /mnt/cpfs/yangyq/data/robotwin500 frame cache
+    status: complete
+    dates: {train_end: 2026-09-24, eval_end: 2026-09-25}
+    train: {epochs: 10, samples: 1108030, steps: 8656, batch: 128, lr: 3e-4, ema: 0.999, pdrop: 0.3, chunk_delta: true}
+    machine: "quic8095 GPU0/1 (single card per arm)"
+    code:
+      source: "/mnt/cpfs/yangyq/code/va_bimanual_b (train_va.py --arm left|right) + /mnt/cpfs/yangyq/rt/"
+      ckpt: "/mnt/cpfs/yangyq/robotwin_duo/ckpt/R0/left.pt, right.pt"
+    results: {clean: 22.4, random: 18.2, overall: 20.3}
+    notes: "Report artifact https://claude.ai/artifact/H92M9vkj7miaDD88uRA8Gz (09-25). All six DiT variants differ within ±2.5 CI."
+  - id: dit_R1
+    label: "R1 — joint 14-D DiT, three cameras, no masking"
+    family: dino_dit
+    backbone: as dit_R0
+    variant: none
+    protocol: zzm500
+    data: robotwin500
+    status: complete
+    dates: {eval_end: 2026-09-25}
+    train: {epochs: 10, steps: 11542, batch: 96, lr: 3e-4}
+    machine: quic8095 CUDA3
+    code: {source: /mnt/cpfs/yangyq/code/va_bimanual_b, ckpt: robotwin_duo/ckpt/R1/both.pt}
+    results: {clean: 23.4, random: 18.6, overall: 21.0}
+    notes: "Joint ≈ per-arm → the simulator demos have no phase-clock shortcut like the real-robot data."
+  - id: dit_R2
+    label: "R2 — joint + cross-arm masking (xarm 0.3, grip noise 0.5)"
+    family: dino_dit
+    backbone: as dit_R0
+    variant: none
+    protocol: zzm500
+    data: robotwin500
+    status: complete
+    dates: {eval_end: 2026-09-25}
+    train: {epochs: 10, steps: 11542, batch: 96, lr: 3e-4, xarm_mask: 0.3, grip_noise: 0.5}
+    machine: "quic8095 CUDA2 (physical GPU3)"
+    code: {source: /mnt/cpfs/yangyq/code/va_bimanual_b, ckpt: robotwin_duo/ckpt/R2/both.pt}
+    results: {clean: 24.6, random: 18.8, overall: 21.7}
+  - id: dit_R3
+    label: "R3 — Duo-DiT v1 (rule gate), from scratch"
+    family: dino_dit
+    backbone: as dit_R0
+    variant: dit_duo_v1
+    protocol: zzm500
+    data: robotwin500 + contact_v1.npy gate labels
+    status: complete
+    dates: {eval_end: 2026-09-25}
+    train: {epochs: 10, steps: 8656, batch: "64 × accum 2", lr: 3e-4, cross_layers: "2,4,6,8"}
+    machine: quic5001 GPU2
+    code: {source: /mnt/cpfs/yangyq/code/va_bimanual_b/models/duo_dit.py, repo: duo/adapters/dino_dit_va_b.py, ckpt: robotwin_duo/ckpt/R3/both.pt}
+    results: {clean: 23.4, random: 19.8, overall: 21.6}
+  - id: dit_R3b
+    label: "R3b — Duo-DiT v1 initialised from the two R0 experts"
+    family: dino_dit
+    backbone: as dit_R0
+    variant: dit_duo_v1
+    protocol: zzm500
+    data: robotwin500 + contact_v1
+    status: complete
+    dates: {eval_end: 2026-09-25}
+    train: {epochs: 10, steps: 8656, batch: 128, lr: 1e-4, init: "duo_from_R0.pt (rt/make_duo_init.py)"}
+    machine: quic8095 physical GPU7
+    code: {source: "/mnt/cpfs/yangyq/code/va_bimanual_b/models/duo_dit.py + rt/make_duo_init.py", ckpt: robotwin_duo/ckpt/R3b/both.pt}
+    results: {clean: 23.0, random: 19.0, overall: 21.0}
+    notes: "Gate statistics 0.04–0.05 (coupled frames are 4.7% of the training set). Full-scene replays of 21 failures in ~/Downloads/robotwin_fail_videos_R3b_full."
+  - id: dit_R3c
+    label: "R3c — R3b + coupled-frame sampling weight ×8.8"
+    family: dino_dit
+    backbone: as dit_R0
+    variant: dit_duo_v1
+    protocol: zzm500
+    data: "robotwin500 + contact_v1 (frames with mode ≥ 2 weighted ×8.8 → 30% of samples)"
+    status: complete
+    dates: {eval_end: 2026-09-25}
+    train: {epochs: 10, steps: 8656, batch: "128 (4×32 DDP)", lr: 1e-4, init: duo_from_R0.pt, contact_weight: 8.8}
+    machine: quic5001 GPU0-3
+    code: {source: "va_bimanual_b (data_multi.frame_weights, train_va.py --contact_weight; backups *.bak_cw0925)", ckpt: robotwin_duo/ckpt/R3c/both.pt}
+    results: {clean: 23.2, random: 21.4, overall: 22.3}
+    notes: "Gate statistics 0.27–0.31 in training; conclusion unchanged — failures happen at the first grasp, before any coupling."
+  # ───────────────────────────── zzm 500-episode internal protocol: π0.5-Duo family (auto-extracted from runs/*/summary.json) ─────────────────────────────
+  - id: pi05_duo
+    label: π0.5-Duo v1 (rule gate)
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/workspace/zzm/pi05_robotwin_mask_comparison/base
+    variant: pi05_duo_v1
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1887}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 25.8, random: 24.4, overall: 25.1, clean_n: 129/500, random_n: 122/500}
+    notes: contact_lookup_robotwin500 (train) / contact_rules.gate_online (eval)
+  - id: pi05_duo_2500
+    label: π0.5-Duo v1 trained on 2,500 mixed episodes
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v1
+    protocol: zzm500
+    data: robotwin 2,500 mixed episodes (clean+randomized)
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 6047}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_2500), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_2500, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_2500/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 51.8, random: 51.8, overall: 51.8, clean_n: 259/500, random_n: 259/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_closed_2500
+    label: π0.5-Duo gate closed, 2,500 mixed episodes
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v1
+    protocol: zzm500
+    data: robotwin 2,500 mixed episodes (clean+randomized)
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 7863}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_closed_2500), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_closed_2500, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_closed_2500/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 54.0, random: 51.6, overall: 52.8, clean_n: 270/500, random_n: 258/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_frz
+    label: π0.5-Duo v1 frozen VLM
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v1
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: partial
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1203}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_frz), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_frz, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_frz/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 47/50 tasks, random 0/50"}
+    results: {clean: 9.6, random: None, overall: None, clean_n: 45/470, random_n: None}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_g3
+    label: π0.5-Duo v1 + g3 state hiding
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/workspace/zzm/pi05_robotwin_mask_comparison/base
+    variant: pi05_duo_v1
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1855}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_g3), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_g3, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_g3/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 23.6, random: 20.2, overall: 21.9, clean_n: 118/500, random_n: 101/500}
+    notes: contact_lookup_robotwin500 (train) / contact_rules.gate_online (eval)
+  - id: pi05_duo_open_2500
+    label: π0.5-Duo gate open, 2,500 mixed episodes
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v1_open
+    protocol: zzm500
+    data: robotwin 2,500 mixed episodes (clean+randomized)
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 7802}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_open_2500), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_open_2500, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_open_2500/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 54.8, random: 50.0, overall: 52.4, clean_n: 274/500, random_n: 250/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_open_nostate_2500
+    label: π0.5-Duo gate open, no state, 2,500 mixed
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v1_open
+    protocol: zzm500
+    data: robotwin 2,500 mixed episodes (clean+randomized)
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 7866}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_open_nostate_2500), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_open_nostate_2500, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_open_nostate_2500/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 53.6, random: 54.6, overall: 54.1, clean_n: 268/500, random_n: 273/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2
+    label: π0.5-Duo v2 (anticipatory gate + CP weights + head)
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1891}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 19.2, random: 20.0, overall: 19.6, clean_n: 96/500, random_n: 100/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_evaloff
+    label: π0.5-Duo duo_v2_evaloff
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: partial
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: None}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_evaloff, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_evaloff/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 22/50"}
+    results: {clean: 18.8, random: 17.3, overall: 18.1, clean_n: 94/500, random_n: 38/220}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_evalrule
+    label: π0.5-Duo duo_v2_evalrule
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: None}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_evalrule, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_evalrule/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 21.0, random: 20.8, overall: 20.9, clean_n: 105/500, random_n: 104/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_gate
+    label: π0.5-Duo v2 gate only
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: partial
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1854}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2_gate), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_gate, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_gate/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 49/50 tasks, random 50/50"}
+    results: {clean: 26.3, random: 25.0, overall: 25.6, clean_n: 129/490, random_n: 125/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_gate_2500
+    label: π0.5-Duo duo_v2_gate_2500
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: robotwin 2,500 mixed episodes (clean+randomized)
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 7926}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2_gate_2500), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_gate_2500, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_gate_2500/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 50.4, random: 49.2, overall: 49.8, clean_n: 252/500, random_n: 246/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_gate_appr
+    label: π0.5-Duo duo_v2_gate_appr
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1936}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2_gate_appr), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_gate_appr, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_gate_appr/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 22.8, random: 21.2, overall: 22.0, clean_n: 114/500, random_n: 106/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_gate_h25
+    label: π0.5-Duo duo_v2_gate_h25
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: None}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2_gate_h25), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_gate_h25, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_gate_h25/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 26.8, random: 24.6, overall: 25.7, clean_n: 134/500, random_n: 123/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_gate_ovs
+    label: π0.5-Duo duo_v2_gate_ovs
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1917}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2_gate_ovs), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_gate_ovs, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_gate_ovs/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 22.0, random: 20.8, overall: 21.4, clean_n: 110/500, random_n: 104/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_gate_sync
+    label: π0.5-Duo duo_v2_gate_sync
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1879}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2_gate_sync), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_gate_sync, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_gate_sync/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 26.0, random: 20.2, overall: 23.1, clean_n: 130/500, random_n: 101/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_gate_x3
+    label: π0.5-Duo duo_v2_gate_x3
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 4818}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2_gate_x3), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_gate_x3, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_gate_x3/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 39.2, random: 37.8, overall: 38.5, clean_n: 196/500, random_n: 189/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_l1
+    label: π0.5-Duo v2 on v1 rule labels
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1914}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2_l1), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_l1, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_l1/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 22.0, random: 20.0, overall: 21.0, clean_n: 110/500, random_n: 100/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_nocp
+    label: π0.5-Duo v2 uniform step weights
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1898}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2_nocp), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_nocp, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_nocp/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 20.4, random: 22.0, overall: 21.2, clean_n: 102/500, random_n: 110/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_nohead
+    label: π0.5-Duo v2 w/o head
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1905}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2_nohead), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_nohead, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_nohead/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 25.8, random: 20.6, overall: 23.2, clean_n: 129/500, random_n: 103/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v2_sg
+    label: π0.5-Duo duo_v2_sg
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v2
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1866}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v2_sg), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v2_sg, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v2_sg/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 20.8, random: 21.2, overall: 21.0, clean_n: 104/500, random_n: 106/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v3
+    label: π0.5-Duo v3 (contact tokens)
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v3
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1909}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v3), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v3, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v3/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 22.4, random: 23.8, overall: 23.1, clean_n: 112/500, random_n: 119/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_v3_frz
+    label: π0.5-Duo v3, frozen VLM
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v3
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 1200}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_v3_frz), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_v3_frz, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_v3_frz/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 7.4, random: 6.8, overall: 7.1, clean_n: 37/500, random_n: 34/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1
+  - id: pi05_duo_x3
+    label: π0.5-Duo v1 ×3 steps
+    family: pi05
+    backbone: π0.5 (lerobot 0.6.1 PI05Policy), init /mnt/cpfs/yangyq/pi05_duo/base
+    variant: pi05_duo_v1
+    protocol: zzm500
+    data: zzm fixed 500 episodes
+    status: complete
+    train: {steps: 1200, global_batch: 12, gpus: 3, seed: 42, wall_s: 4798}
+    machine: quic5001 / quic5000 (3×H20 per run)
+    code: {source: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variant duo_x3), run_dir: /mnt/cpfs/yangyq/pi05_duo/runs/duo_x3, repo: duo/adapters/pi05_lerobot/comparison.py}
+    weights: {path: /root/yangyq/pi05_duo/duo_x3/training (quic5001), persistent: false}
+    eval: {episodes: 10, completed: "clean 50/50 tasks, random 50/50"}
+    results: {clean: 41.2, random: 43.2, overall: 42.2, clean_n: 206/500, random_n: 216/500}
+    notes: anticipatory gate (coupled within 25 steps) + critical-point step weights (lambda 4, tau 5) + future-contact head (aux 0.2); labels = simulator replay v2 unless _l1

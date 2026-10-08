@@ -1,0 +1,166 @@
+# Every Duo head version that exists in code, what it shares and how it differs. `code` = where it ran; `repo` = the
+# verbatim copy in this repository. Order = chronological.
+variants:
+  - id: dit_duo_v1
+    name: Duo-DiT v1 (DINO-DiT, from scratch)
+    date: 2026-09-24
+    host: DINOv2-B + 8x512 DiT-flow (va_bimanual_b DiTFlowPolicy), no language model, CLIP text token as instruction
+    streams: two separate DiTFlowPolicy copies; each reads head + OWN wrist DINO tokens + own 7-d state (+2 presence flags)
+    stream_dim: 7 joints+gripper per arm
+    coupling: CrossArm (own Attention, qk-norm off in v1) after blocks 2,4,6,8, both directions, separate weights, tanh gain zero-init
+    gate: FK contact rule (S/A frames -> 1) from contact_v1.npy at train, contact_rules.gate_online at eval; cross_drop optional
+    init: from scratch (R3) or from two per-arm R0 checkpoints via rt/make_duo_init.py (R3b/R3c)
+    code: /mnt/cpfs/yangyq/code/va_bimanual_b/models/duo_dit.py
+    repo: duo/adapters/dino_dit_va_b.py
+    runs: [R3, R3b, R3c]
+  - id: dit_duo_v2
+    name: Duo-DiT v2 (+ future-contact head, critical-point weights)
+    date: 2026-09-25
+    host: same as dit_duo_v1
+    streams: same
+    stream_dim: 7
+    coupling: same
+    gate: rule OR learned head (--head_contact, DUO_EVAL_GATE = or|head|rule); per-step loss weights around contact transitions (loss_step_w)
+    init: same
+    diff_from: dit_duo_v1 — adds contact_head (5 future modes x H + coupling logit) on the two pooled conditioners, aux CE/BCE loss (head_w), step weights
+    code: /mnt/cpfs/yangyq/code/va_bimanual_b/models/duo_dit.py (backup .bak_duov2_0925 = v1)
+    repo: duo/adapters/dino_dit_va_b.py
+    runs: [R4_duo_v2_initR0, P16_DUO_* real-robot]
+  - id: pi05_duo_v1
+    name: π0.5-Duo v1 (two-stream gated suffix, shared expert)
+    date: 2026-09-24
+    host: π0.5 (lerobot 0.6.1 PI05Policy), VLM prefix shared, state text removed from the prompt
+    streams: suffix = [state_L, 50 left action tokens, state_R, 50 right action tokens]; the SAME pretrained action-expert weights process both; learned stream embeddings; per-stream in/out projections sliced from the pretrained 32-d projections (cols/rows 0:7, 7:14); each stream sees only its own 7-d state token (+ presence flag)
+    stream_dim: 7
+    coupling: block mask inside the suffix self-attention — gate 0 = the two streams cannot see each other (two per-arm experts over one prefix), gate 1 = the original joint expert
+    gate: contact rule (gate_train on raw state/chunk) at train; gate_online from measured state at eval; duo_g3 adds zzm's g3 state hiding
+    init: pretrained π0.5 base (zzm RoboTwin base ckpt)
+    code: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variants duo, duo_g3)
+    repo: duo/adapters/pi05_lerobot/comparison.py
+    runs: [pi05_duo (zzm500), pi05_duo_g3 (zzm500)]
+  - id: pi05_duo_v1_open
+    name: π0.5-Duo, gate always open
+    date: 2026-09-27
+    host: same as pi05_duo_v1
+    streams: same
+    stream_dim: 7
+    coupling: same block structure but gate forced to 1 for every sample (DUO_TRAIN_GATE=1) — the streams always attend each other
+    gate: none (always coupled)
+    init: pretrained π0.5 base
+    diff_from: pi05_duo_v1 — only the gate; this is what the official-protocol number 80.36 / 46.36 was produced with
+    code: /mnt/cpfs/yangyq/pi05_duo/comparison.py + runs/duo_open_clean2500/train.json
+    repo: duo/adapters/pi05_lerobot/comparison.py
+    runs: [pi05_duo_open_clean2500]
+  - id: pi05_duo_v2
+    name: π0.5-Duo v2 (anticipatory gate + critical-point weights + future-contact head)
+    date: 2026-09-25
+    host: same
+    streams: same
+    stream_dim: 7
+    coupling: same
+    gate: train gate = coupled anywhere in the next 25 steps (simulator ground-truth labels contact_v2); eval gate = head prediction OR causal rule; ablations nohead / nocp / l1 / appr / ovs / gate / sg
+    init: pretrained π0.5 base
+    diff_from: pi05_duo_v1 — labels from simulator replay, anticipatory gate, per-step weights 1+4·exp(-d/5), aux head 0.2
+    code: /mnt/cpfs/yangyq/pi05_duo/comparison.py
+    repo: duo/adapters/pi05_lerobot/comparison.py
+    runs: [pi05_duo_v2 family (zzm500)]
+  - id: pi05_duo_v3
+    name: π0.5-Duo v3 (contact tokens)
+    date: 2026-09-26
+    host: same
+    streams: same + C=10 contact tokens inside the suffix that predict future contact modes; both streams always read them
+    stream_dim: 7
+    coupling: same
+    gate: as v2
+    init: pretrained π0.5 base
+    diff_from: pi05_duo_v2 — ME-Dex style consequence tokens instead of a pooled head
+    code: /mnt/cpfs/yangyq/pi05_duo/comparison.py (duo_v3, duo_v3_frz)
+    repo: duo/adapters/pi05_lerobot/comparison.py
+    runs: [pi05_duo_v3 (zzm500)]
+  - id: fastwam_duo_shared
+    name: Duo-FastWAM (shared blocks, 2T tokens)
+    date: 2026-09-27
+    host: Fast-WAM (Wan2.2-TI2V-5B video expert + 30x1024 ActionDiT, MoT), official RoboTwin weights
+    streams: one ActionDiT processes 2T tokens = [left 7-d tokens; right 7-d tokens]; RoPE positions 0..T-1 for both; learned arm embedding; per-arm encoder/head sliced from the 14-d ones
+    stream_dim: 7
+    coupling: the MoT self-attention between the two token halves (duo_cross=true = always open; false = masked off). No CrossArm modules.
+    gate: none
+    init: official robotwin_uncond_3cam_384.pt (sees randomized scenes -> not leaderboard protocol)
+    code: /mnt/cpfs/yangyq/code/duo_fastwam/apply_duo_patch.py (DuoActionDiT in src/fastwam/models/wan22/action_dit.py)
+    repo: duo/adapters/fastwam_shared_stream.py, duo/adapters/legacy/fastwam_apply_duo_patch.py
+    runs: [duo_fastwam_stage1_open_frozenvideo_fix]
+  - id: flower_duo_flowblock
+    name: FLOWER + Duo-DiT (pretrained FlowBlock streams)
+    date: 2026-10-03
+    host: FLOWER VLA (Florence-2-base encoder, flower_bimanual_v3), pretrained FLOWER action head 360000_model_weights.pt
+    streams: left stream = FLOWER's 12x1024 FlowBlock DiT (pretrained), right stream = deepcopy; per-arm action in/out MLPs and per-arm proprio MLPs new; the Florence-2 encoder runs twice (head + left wrist + prompt + text, head + right wrist + ...), each stream reads its own encoding
+    stream_dim: 7
+    coupling: CrossArm = nn.MultiheadAttention (no qk-norm, no RoPE) after blocks 2,4,6,8, both directions, tanh gain zero-init
+    gate: none (always coupled)
+    init: pretrained FLOWER head for both streams (deepcopy)
+    code: /mnt/workspace/yangyq/flower_duodit_robotwin/flower_duodit.py
+    repo: duo/adapters/flower_flowblock.py
+    runs: [flower_duodit_clean2500]
+  - id: flower_duo_custom
+    name: FLOWER + custom DuoDiT (va_bimanual_b DiTBlock streams, from scratch)
+    date: 2026-10-04
+    host: FLOWER Florence-2 encoder (same observation path as flower_duo_flowblock); FLOWER's own action blocks discarded
+    streams: two ArmHead = 8x512 adaLN-zero DiTBlocks (va_bimanual_b.models.dit_flow.DiTBlock), own 7-d state into the pooled conditioner
+    stream_dim: 7
+    coupling: CrossArm (va_bimanual_b, qk-norm) after blocks 2,4,6,8
+    gate: "contact_gate from batch, open when absent (RoboTwin: always open)"
+    init: from scratch (FLOWER head weights cannot initialise these blocks)
+    diff_from: flower_duo_flowblock — stream architecture (8x512 scratch vs 12x1024 pretrained), qk-norm CrossArm, gate plumbing
+    code: /mnt/workspace/yangyq/flower_customduodit_robotwin/custom_dit.py
+    repo: "duo/adapters/flower_custom_dit.py (library form: duo/head.py DuoFlowHead)"
+    runs: [flower_customduodit_clean2500]
+  - id: flower_duo_custom_rope
+    name: FLOWER + custom DuoDiT + RoPE
+    date: 2026-10-05
+    host: same as flower_duo_custom
+    streams: same, learned act_pos removed
+    stream_dim: 7
+    coupling: same, RoPE inside the CrossArm attention too
+    gate: same
+    init: from scratch
+    diff_from: flower_duo_custom — RoPE (action_rope.enable_rope) in every stream self-attention and in CrossArm; no learned positions
+    code: /tmp/robotwin_rope/flower/custom_dit.py (quic5000 /tmp, not persistent)
+    repo: duo/adapters/flower_custom_dit_rope.py, duo/adapters/legacy/action_rope.py
+    runs: [flower_customduodit_rope_clean2500]
+  - id: openwam_duo_legacy
+    name: OpenWAM + DuoDiT legacy (joint_cross_attn, 14-D joints)
+    date: 2026-10-05
+    host: OpenWAM-Alpha (Wan2.2-TI2V-5B video DiT frozen), variant joint_cross_attn, 256x256, bridge layers 0,4,...,28
+    streams: two 7-d streams (va_bimanual_b-style) read the video features through cross-attention bridges; lambda_video 0
+    stream_dim: 7
+    coupling: CrossArm every 2nd layer
+    gate: none
+    init: OpenWAM-Alpha pretrain foundation model; action head new
+    code: /mnt/workspace/yangyq/openwam_duodit_robotwin (train_robotwin_duo_dit.sh, _stage2.sh); model file in the OpenWAM source tree (not copied)
+    repo: (not copied — superseded)
+    runs: [openwam_duodit_legacy (0/58, aborted)]
+  - id: openwam_native_dual
+    name: OpenWAM native dual ActionDiT (two full pretrained experts, EEF)
+    date: 2026-10-06
+    host: OpenWAM-Alpha (Wan2.2-TI2V-5B video DiT TRAINED, lambda_video 1), variant joint_self_attn, attention_mask_mode mutual, 384x320 three-camera canvas, 33 frames stride 4
+    streams: left = full pretrained ActionDiT (30x1024), right = second full copy; each a 10-d EEF stream (xyz, rot6d, gripper) in the official 80-d unified action space, slots 0-9 / 34-43; both share the MoT joint attention with the video tokens
+    stream_dim: 10 (EEF)
+    coupling: MoT mask blocks left<->right; CrossArm (va_bimanual_b CrossArm, qk-norm) + RoPE after every even layer (15 per direction), tanh gain zero-init
+    gate: none
+    init: native_dual_warm_start — every pretrained tensor copied to both arms, action_encoder columns / action_decoder rows sliced per arm; CrossArm new
+    diff_from: openwam_duo_legacy — pretrained experts instead of new streams, EEF instead of joints, video expert trained, official 5-epoch recipe
+    code: /tmp/robotwin_native_dual/native_dual_dit.py + install_native_dual.py (quic5000 /tmp, not persistent)
+    repo: duo/adapters/openwam_native_dual.py, duo/adapters/legacy/openwam_install_native_dual.py
+    runs: [openwam_native_dual_clean2500]
+  - id: duo_jepa_v1
+    name: Duo-DiT + per-arm / shared JEPA perception (planned)
+    date: 2026-10-08
+    host: frozen DINOv2-B (layers 4/8/12) + Adapter, no VLM; CLIP instruction token
+    streams: R3 layout (head + own wrist + own state) with FLARE future tokens; CrossArm (GatedCross) at 2,4,6,8; optional JEPA subgoal tokens via a second GatedCross set
+    stream_dim: 7
+    coupling: GatedCross, gate = sigmoid(w·s2) learned from the shared JEPA latent (or none / rule)
+    gate: learned | none | rule
+    init: from scratch
+    code: ~/QuicData/YYQ_Quic_EX/duo_jepa (Codeup YYQ_Quic_EX), cluster /mnt/cpfs/yangyq/code/duo_jepa
+    repo: (lives in YYQ_Quic_EX; uses the same CrossArm as duo/coupling.py)
+    runs: [none yet — GPU approval pending]

@@ -1,0 +1,27 @@
+# Evaluation protocols. Every run and every external number names one of these; numbers under different protocols
+# must never be compared in the same table.
+protocols:
+  robotwin2_official:
+    name: RoboTwin 2.0 official (Co-train leaderboard protocol)
+    train: 50 tasks x 50 demo_clean episodes = 2,500 episodes (aloha-agilex, 14-D joints, 3 cameras 640x480 -> model input)
+    eval: 50 tasks x {demo_clean (Easy), demo_randomized (Hard = clean2random)} x 100 episodes, seed 0, unseen instructions, expert-filtered
+    metrics: clean / random / overall = mean(clean, random), success rate %
+    reference: https://robotwin-platform.github.io/leaderboard ; RoboTwin repo scripts/eval_policy.sh ; our runner eval/robotwin/legacy_adapter/run_eval_fast.py
+    note: leaderboard rows by the RoboTwin team are trained with each model's XPolicyLab train.sh default recipe.
+  zzm500:
+    name: zzm 500-episode subset (internal, NOT comparable with the leaderboard)
+    train: fixed 500 episodes (50 tasks x 10, seed 42) drawn from robotwin_unified (27,500 = 50 x (50 clean + 500 randomized)), so ~90% of training demos are randomized scenes
+    eval: 50 tasks x {clean, randomized} x 10 valid episodes (1,000 episodes), unseen instructions
+    metrics: clean / random / overall, success rate %
+    reference: /mnt/workspace/zzm/pi05_robotwin_mask_comparison ; ~/Downloads/PI05_RoboTwin_500episode子集训练评测说明.md
+    note: same pi0.5 scores 14.5% here vs 58.4% on the leaderboard; 'random' here is in-distribution.
+  fastwam_subset10:
+    name: Fast-WAM 10-task check (internal)
+    train: official RoboTwin Fast-WAM weights (robotwin_uncond_3cam_384.pt, trained on 27,500 episodes incl. randomized) + 3k fine-tune steps
+    eval: official weakest 8 tasks + lift_pot + beat_block_hammer, x {clean, randomized} x 100 episodes; compared with wsh's official-weights final_report.json
+    metrics: clean / random on the 10 tasks
+    reference: /mnt/cpfs/yangyq/code/duo_fastwam/eval_duo_wam_5001_v2.sh
+    note: not a leaderboard number (randomized scenes were in the training data).
+  robodojo_official: {name: RoboDojo official, note: planned, nothing run yet}
+  vla_arena: {name: VLA-Arena single-arm (L0-L2), note: planned, nothing run yet}
+  robodojo_realeval: {name: RoboDojo-RealEval 18 tasks, note: planned, nothing run yet}

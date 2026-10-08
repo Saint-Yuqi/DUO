@@ -1,0 +1,31 @@
+\begin{table}[t]
+  \caption{Main comparison on RoboTwin 2.0 under the official protocol. All values are success rates (\%); higher is better. Generated from ledger/ (uncommitted, 2026-10-08); edit the YAML, not this file.}
+  \label{tab:robotwin_main}
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{3pt}
+  \renewcommand{\arraystretch}{1.08}
+  \begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lccc@{}}
+    \toprule
+    Method & Overall & Clean & Random. \\
+    \midrule
+    \multicolumn{4}{@{}l}{\textit{Single-model policies}} \\
+    StarVLA & 24.84 & 46.52 & 3.16 \\
+    FLOWER w/ Duo-DiT (pretrained FlowBlock) & 47.46 & 68.30 & 26.62 \\
+    FLOWER w/ custom Duo-DiT + RoPE & 43.03 & 66.50 & 19.56 \\
+    $\pi$0.5 & 58.35 & 70.70 & 46.00 \\
+    SmolVLA (our run) & 16.27 & 29.78 & 2.76 \\
+    Fast-WAM & 39.85 & 77.80 & 1.90 \\
+    OpenWAM & 69.05 & 89.40 & 48.70 \\
+    LightWAM & -- & -- & -- \\
+    \addlinespace[2pt]
+    \multicolumn{4}{@{}l}{\textit{Dual-model policies}} \\
+    AnyBimanual (RVT-LF / PerAct-LF retrain) & -- & -- & -- \\
+    \addlinespace[2pt]
+    \multicolumn{4}{@{}l}{\textit{Ours}} \\
+    \textbf{$\pi$0.5 w/ Duo-DiT (gate open)} & 63.36 & 80.36 & 46.36 \\
+    \textbf{OpenWAM w/ native dual Duo-DiT} & -- & -- & -- \\
+    DuoWAM (Fast-WAM backbone, full model) & -- & -- & -- \\
+    \bottomrule
+  \end{tabular*}
+\end{table}

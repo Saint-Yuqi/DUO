@@ -1,0 +1,44 @@
+# Numbers we did not produce. `source` and `snapshot` are mandatory.
+external:
+  - id: lb_starvla
+    label: StarVLA
+    protocol: robotwin2_official
+    results: {clean: 46.52, random: 3.16, overall: 24.84}
+    source: RoboTwin 2.0 official leaderboard
+    snapshot: 2026-09-24
+  - id: lb_pi05
+    label: π0.5 (RoboTwin-team recipe)
+    protocol: robotwin2_official
+    results: {clean: 70.70, random: 46.00, overall: 58.35}
+    source: RoboTwin 2.0 official leaderboard (cotrain_ckpt/Pi_05)
+    snapshot: 2026-09-24
+  - id: lb_fastwam
+    label: Fast-WAM
+    protocol: robotwin2_official
+    results: {clean: 77.80, random: 1.90, overall: 39.85}
+    source: RoboTwin 2.0 official leaderboard (clean-only train.sh run by the RoboTwin team)
+    snapshot: 2026-09-24
+  - id: lb_openwam
+    label: OpenWAM
+    protocol: robotwin2_official
+    results: {clean: 89.40, random: 48.70, overall: 69.05}
+    source: RoboTwin 2.0 official leaderboard
+    snapshot: 2026-09-24
+  - id: zzm_pi05_baseline
+    label: π0.5 baseline (zzm)
+    protocol: zzm500
+    results: {clean: 14.8, random: 14.2, overall: 14.5}
+    source: /mnt/workspace/zzm/pi05_robotwin_mask_comparison (1,200 steps x bs12)
+    snapshot: 2026-09-25
+  - id: zzm_pi05_g3
+    label: π0.5 + g3 state masking (zzm)
+    protocol: zzm500
+    results: {clean: 21.0, random: 16.8, overall: 18.9}
+    source: /mnt/workspace/zzm/pi05_robotwin_mask_comparison
+    snapshot: 2026-09-25
+  - id: wsh_fastwam_official_subset10
+    label: Fast-WAM official weights (wsh eval, 10 tasks)
+    protocol: fastwam_subset10
+    results: {clean: 76.9, random: 76.4}
+    source: wsh official_model_50tasks_2settings_100episodes/final_report.json restricted to the 10 tasks
+    snapshot: 2026-09-28

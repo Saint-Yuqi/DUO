@@ -132,7 +132,7 @@ kbd { font: 12px var(--font-mono); background: var(--code); padding: 1px 5px; bo
     function fallback() { const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (e) { toast("Select and copy manually"); } ta.remove(); } };
 
   // header
-  $("#meta").innerHTML = `<span>built ${esc(D.build.time)}</span><span>git ${esc(D.build.git)}</span><a href="${D.links.github}">GitHub</a><a href="${D.links.codeup}">Codeup</a><a href="${D.links.paper_mirror}">Paper (Overleaf mirror)</a><a href="${D.links.leaderboard}">RoboTwin leaderboard</a>`;
+  $("#meta").innerHTML = `<span>built ${esc(D.build.time)}</span><span>git ${esc(D.build.git)}</span><a href="${D.links.github}">GitHub</a><a href="${D.links.codeup}">Codeup</a><a href="${D.links.paper_mirror}">Paper (Overleaf mirror)</a><a href="${D.links.leaderboard}">RoboTwin leaderboard</a><a href="${D.links.artifact}">published page</a>`;
   $("#counts").innerHTML = Object.entries(D.build.counts).filter(([, n]) => n).map(([s, n]) => `<span class="pill s-${s}"><i></i>${n} ${s}</span>`).join("");
   const official = D.runs.filter(r => r.protocol === "robotwin2_official" && r.status === "complete").length;
   $("#banner").innerHTML = `<b>Protocol first.</b> ${official} of our runs are under the official RoboTwin 2.0 protocol (clean2500 train, 50 × 2 × 100 eval). Everything under <code>zzm500</code> or <code>fastwam_subset10</code> is internal and must not be compared with leaderboard numbers. Weights marked <span class="pill" style="font-size:11px">volatile</span> live on container-local disks and vanish on restart.`;

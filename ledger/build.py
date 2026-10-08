@@ -147,7 +147,7 @@ def main():
              "counts": {s: sum(1 for r in runs if r["status"] == s) for s in ("complete", "evaluating", "training", "partial", "aborted", "planned", "superseded")}}
     data = {"build": build, "protocols": protocols, "runs": runs, "external": ext, "variants": variants, "tables": rtables, "tex": tex, "per_task": per_task,
             "links": {"github": "https://github.com/Saint-Yuqi/DUO", "codeup": "https://codeup.aliyun.com/6a3ce6c6a6fcee143fa25a90/DUO", "paper_mirror": "https://github.com/pikonguwu/Duo-WAM",
-                      "leaderboard": "https://robotwin-platform.github.io/leaderboard"}}
+                      "leaderboard": "https://robotwin-platform.github.io/leaderboard", "artifact": "https://claude.ai/artifact/LYUcUNwvGWM3XQeWZgQHSR"}}
     DOCS.mkdir(exist_ok=True)
     js = json.dumps(data, ensure_ascii=False, default=str).replace("</", "<\\/")
     (DOCS / "ledger.json").write_text(json.dumps(data, ensure_ascii=False, indent=1, default=str))

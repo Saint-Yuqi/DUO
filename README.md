@@ -7,7 +7,7 @@ per-sample gate (rule, learned, or always-open) can switch it. The head is backb
 FLOWER, π0.5, OpenWAM and Fast-WAM (see `duo/adapters/`).
 
 Mirrors: `origin` https://github.com/Saint-Yuqi/DUO · `codeup` https://codeup.aliyun.com/6a3ce6c6a6fcee143fa25a90/DUO
-(push to both with `scripts/push_remotes.sh`). **Experiment ledger:** [`docs/index.html`](docs/index.html) (built from `ledger/`).
+(push to both with `scripts/push_remotes.sh`). **Experiment ledger:** [`docs/index.html`](docs/index.html) (built from `ledger/`), published at https://claude.ai/artifact/LYUcUNwvGWM3XQeWZgQHSR.
 
 ## Layout
 | path | what |

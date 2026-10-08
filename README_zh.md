@@ -11,7 +11,7 @@ python ledger/build.py                      # 校验所有引用、重建 docs/ 
 bash scripts/push_remotes.sh                # 同时推 GitHub 和 Codeup
 ```
 台账网页：`docs/index.html`（仓库里随时可下载；GitHub 仓库 Settings → Pages → `main` / `docs` 打开后有公网地址），
-也发布为 claude.ai artifact（链接见 git log / 群里）。改表格只改 YAML，不要直接改 HTML。
+也发布为 claude.ai artifact：https://claude.ai/artifact/LYUcUNwvGWM3XQeWZgQHSR（私有，分享给同事后他们才能打开；每次 build 后重新发布同一文件即可更新）。改表格只改 YAML，不要直接改 HTML。
 
 ## 记一个新 run
 1. `ledger/runs.yaml` 复制一条，填：backbone、`variant`（头版本，见 `variants.yaml`）、`protocol`、数据、训练配方、机器、

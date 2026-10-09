@@ -52,7 +52,7 @@ runs:
     eval: {episodes: 100, summary: eval_summary.json, per_task_source: "eval_results/<task>/<setting>/result.json"}
     results: {clean: 68.30, random: 26.62, overall: 47.46, clean_n: 3415/5000, random_n: 1331/5000}
     per_task: ledger/per_task/flower_duodit_clean2500.json
-    notes: "Was mislabelled 'FLOWER baseline' in monitor.py / robotwin_duodit_results.html; it IS a Duo head (two FlowBlock streams + CrossArm). No single-stream FLOWER number exists on clean2500. Preview at step 52000 on 10 eps/task gave 76.0 / 24.0."
+    notes: "Was mislabelled 'FLOWER baseline' in monitor.py / robotwin_duodit_results.html; it IS a Duo head (two FlowBlock streams + CrossArm). No single-stream FLOWER number exists on clean2500. Preview at step 52000 on 10 eps/task gave 76.0 / 24.0. 2026-10-10 check of training/last.pt (step 60000, still on quic5000): cross-arm gains |tanh(g)| <= 0.044 on all 8 modules and the cross-attention out_proj norms shrank below init (18-26 vs ~32) -> the coupling channel stayed essentially closed; the model is functionally two independent per-arm FLOWER heads (left/right streams diverged, relative L2 0.56). AdamW wd 0.01 also applied to the gains (no no-decay group)."
   - id: flower_customduodit_clean2500
     label: "FLOWER + custom Duo-DiT (scratch 8×512 DiTBlocks)"
     family: flower
@@ -76,7 +76,7 @@ runs:
     eval: {episodes: 100, summary: eval_summary.json}
     results: {clean: 65.38, random: 18.84, overall: 42.11, clean_n: 3269/5000, random_n: 942/5000}
     per_task: ledger/per_task/flower_customduodit_clean2500.json
-    notes: "Same Duo layout as flower_duodit_clean2500 but scratch 8×512 blocks → shows only that the pretrained large FlowBlock beats a scratch small DiTBlock under the same Duo layout."
+    notes: "Same Duo layout as flower_duodit_clean2500 but scratch 8×512 blocks → shows only that the pretrained large FlowBlock beats a scratch small DiTBlock under the same Duo layout. 2026-10-10 last.pt: |tanh(g)| <= 0.065 -> coupling essentially closed."
   - id: flower_customduodit_rope_clean2500
     label: "FLOWER + custom Duo-DiT + RoPE"
     family: flower
@@ -101,7 +101,7 @@ runs:
     eval: {episodes: 100, summary: /tmp/robotwin_rope/flower/eval_summary.json}
     results: {clean: 66.50, random: 19.56, overall: 43.03, clean_n: 3325/5000, random_n: 978/5000}
     per_task: ledger/per_task/flower_customduodit_rope_clean2500.json
-    notes: "Overleaf row 'Flower(+ROPE duo dit)'. The 'flower_eval_summary.json' in deleted_weight_evidence is this run (1.31 GB weight = custom head size), not a single-stream FLOWER."
+    notes: "Overleaf row 'Flower(+ROPE duo dit)'. The 'flower_eval_summary.json' in deleted_weight_evidence is this run (1.31 GB weight = custom head size), not a single-stream FLOWER. 2026-10-10 last.pt: |tanh(g)| <= 0.091 -> coupling essentially closed."
   - id: smolvla_clean2500
     label: "SmolVLA (native, our training)"
     family: smolvla

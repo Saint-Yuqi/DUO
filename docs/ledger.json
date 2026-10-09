@@ -1,14 +1,14 @@
 {
  "build": {
-  "time": "2026-10-10T00:46+08:00",
-  "git": "39aa82b",
+  "time": "2026-10-10T00:58+08:00",
+  "git": "3338418",
   "counts": {
    "complete": 33,
    "evaluating": 1,
    "training": 0,
    "partial": 3,
    "aborted": 1,
-   "planned": 0,
+   "planned": 1,
    "superseded": 0
   }
  },
@@ -282,6 +282,52 @@
    },
    "per_task": "ledger/per_task/flower_customduodit_rope_clean2500.json",
    "notes": "Overleaf row 'Flower(+ROPE duo dit)'. The 'flower_eval_summary.json' in deleted_weight_evidence is this run (1.31 GB weight = custom head size), not a single-stream FLOWER. 2026-10-10 last.pt: |tanh(g)| <= 0.091 -> coupling essentially closed."
+  },
+  {
+   "id": "flower_sharedduo_clean2500",
+   "label": "FLOWER + shared-weight Duo (π0.5-Duo recipe)",
+   "family": "flower",
+   "backbone": "FLOWER VLA (Florence-2-base) + pretrained FLOWER head, one shared FlowBlock expert",
+   "variant": "flower_duo_shared",
+   "protocol": "robotwin2_official",
+   "data": "same cache as flower_duodit_clean2500",
+   "params": {
+    "total": "440.0M",
+    "trainable": "416.8M",
+    "counted": "2026-10-10"
+   },
+   "status": "planned",
+   "train": {
+    "max_steps": 60000,
+    "min_steps": 15000,
+    "global_batch": 32,
+    "per_gpu_batch": 2,
+    "accum": 4,
+    "gpus": 4,
+    "lr_head": "1e-4",
+    "lr_vlm": "2e-5",
+    "wd": 0.01,
+    "val_every": 2000,
+    "patience": 6,
+    "seed": 42,
+    "gate": "open",
+    "selection": "best val loss"
+   },
+   "machine": "to be run by a teammate (4 GPUs train, 4 GPUs eval)",
+   "code": {
+    "source": "/mnt/workspace/yangyq/flower_sharedduo_robotwin: flower_sharedduo.py, train.py, train.sh, eval.sh, policy_server.py, run_eval_fast.py, eval_adapter/",
+    "repo": "recipes/flower_shared_duo/"
+   },
+   "eval": {
+    "episodes": 100,
+    "runner": "eval.sh (run_eval_fast.py)"
+   },
+   "results": {
+    "clean": null,
+    "random": null,
+    "overall": null
+   },
+   "notes": "Answers whether a shared-weight Duo helps FLOWER, since the two-copy FlowBlock Duo never opened its cross-arm gains. CPU smoke + 2-step train/resume verified 2026-10-10; not yet run on GPU."
   },
   {
    "id": "smolvla_clean2500",
@@ -1918,6 +1964,25 @@
    "runs": [
     "none yet — GPU approval pending"
    ]
+  },
+  {
+   "id": "flower_duo_shared",
+   "name": "FLOWER + shared-weight Duo (π0.5-Duo recipe on FLOWER)",
+   "date": "2026-10-10",
+   "host": "FLOWER VLA, Florence-2-base, author's pretrained FLOWER head; ONE Florence pass over head + left wrist + right wrist + prompt + text",
+   "streams": "one shared pretrained FlowBlock expert (12×1024) over [s_L, 50 left tokens, s_R, 50 right tokens], RoPE positions 0..50 per arm, stream embeddings; per-arm in/out projections sliced from the pretrained 16-d encoder (fc1 columns) / decoder (rows); own-state token zero-init + presence flag",
+   "stream_dim": 7,
+   "coupling": "self-attention mask: time-causal over both arms; cross-stream blocks open when gate = 1 (no extra modules, nothing to learn open)",
+   "gate": "open (default, = official π0.5-Duo run); closed = per-arm shared-weight ablation",
+   "aux": "none",
+   "init": "pretrained FLOWER head (240/264 DiT tensors), slices for the per-arm projections, state tokens zero",
+   "params": "440.0M total / 416.8M trainable (≈ single-stream FLOWER 437.8M)",
+   "diff_from": "flower_duo_flowblock — one shared expert instead of two copies, mask instead of CrossArm+tanh gain, state as token instead of adaLN, one Florence pass with all three cameras",
+   "code": "/mnt/workspace/yangyq/flower_sharedduo_robotwin/flower_sharedduo.py",
+   "repo": "recipes/flower_shared_duo/flower_sharedduo.py",
+   "runs": [
+    "flower_sharedduo_clean2500"
+   ]
   }
  ],
  "tables": [
@@ -1987,6 +2052,23 @@
          "overall": 43.03,
          "clean_n": "3325/5000",
          "random_n": "978/5000"
+        }
+       },
+       "planned": false
+      },
+      {
+       "label": "FLOWER w/ shared-weight Duo (π0.5 recipe)",
+       "note": null,
+       "bold": false,
+       "source": {
+        "kind": "run",
+        "id": "flower_sharedduo_clean2500",
+        "label": "FLOWER + shared-weight Duo (π0.5-Duo recipe)",
+        "status": "planned",
+        "results": {
+         "clean": null,
+         "random": null,
+         "overall": null
         }
        },
        "planned": false
@@ -2863,11 +2945,11 @@
   }
  ],
  "tex": {
-  "robotwin_main": "\\begin{table}[t]\n  \\caption{Main comparison on RoboTwin 2.0 under the official protocol. All values are success rates (\\%); higher is better. Generated from ledger/ (39aa82b, 2026-10-10); edit the YAML, not this file.}\n  \\label{tab:robotwin_main}\n  \\centering\n  \\footnotesize\n  \\setlength{\\tabcolsep}{3pt}\n  \\renewcommand{\\arraystretch}{1.08}\n  \\begin{tabular*}{\\columnwidth}{@{\\extracolsep{\\fill}}lccc@{}}\n    \\toprule\n    Method & Overall & Clean & Random. \\\\\n    \\midrule\n    \\multicolumn{4}{@{}l}{\\textit{Single-model policies}} \\\\\n    StarVLA & 24.84 & 46.52 & 3.16 \\\\\n    FLOWER w/ Duo-DiT (pretrained FlowBlock) & 47.46 & 68.30 & 26.62 \\\\\n    FLOWER w/ custom Duo-DiT + RoPE & 43.03 & 66.50 & 19.56 \\\\\n    $\\pi$0.5 & 58.35 & 70.70 & 46.00 \\\\\n    SmolVLA (our run) & 16.27 & 29.78 & 2.76 \\\\\n    Fast-WAM & 39.85 & 77.80 & 1.90 \\\\\n    OpenWAM & 69.05 & 89.40 & 48.70 \\\\\n    LightWAM & -- & -- & -- \\\\\n    \\addlinespace[2pt]\n    \\multicolumn{4}{@{}l}{\\textit{Dual-model policies}} \\\\\n    AnyBimanual (RVT-LF / PerAct-LF retrain) & -- & -- & -- \\\\\n    \\addlinespace[2pt]\n    \\multicolumn{4}{@{}l}{\\textit{Ours}} \\\\\n    \\textbf{$\\pi$0.5 w/ Duo-DiT (gate open)} & 63.36 & 80.36 & 46.36 \\\\\n    \\textbf{OpenWAM w/ native dual Duo-DiT} & -- & -- & -- \\\\\n    DuoWAM (Fast-WAM backbone, full model) & -- & -- & -- \\\\\n    \\bottomrule\n  \\end{tabular*}\n\\end{table}\n",
-  "action_head_transfer": "\\begin{table*}[t]\n  \\caption{Transfer of the same Duo-DiT action head across policy backbones on RoboTwin 2.0. All values are success rates (\\%). Generated from ledger/ (39aa82b, 2026-10-10); edit the YAML, not this file.}\n  \\label{tab:action_head_transfer}\n  \\centering\n  \\footnotesize\n  \\setlength{\\tabcolsep}{3pt}\n  \\renewcommand{\\arraystretch}{1.08}\n  \\begin{tabular*}{\\textwidth}{@{\\extracolsep{\\fill}}lcccccc@{}}\n    \\toprule\n    Base policy & Native overall & Duo overall & Duo clean & Duo random. & $\\Delta$ overall & Status \\\\\n    \\midrule\n    StarVLA & -- & -- & -- & -- & -- & Planned \\\\\n    $\\pi$0.5 & 58.35 & 63.36 & 80.36 & 46.36 & +5.01 & Completed \\\\\n    SmolVLA & 16.27 & -- & -- & -- & -- & Planned \\\\\n    Fast-WAM & 39.85 & -- & -- & -- & -- & Planned \\\\\n    OpenWAM & 69.05 & -- & -- & -- & -- & Evaluating \\\\\n    FLOWER & -- & 47.46 & 68.30 & 26.62 & -- & Completed \\\\\n    \\bottomrule\n  \\end{tabular*}\n\\end{table*}\n",
-  "openwam_flower_duo_dit": "\\begin{table}[t]\n  \\caption{Duo-DiT action-head ablation on OpenWAM, FLOWER, and LightWAM under the RoboTwin 2.0 protocol. Generated from ledger/ (39aa82b, 2026-10-10); edit the YAML, not this file.}\n  \\label{tab:openwam_flower_duo_dit}\n  \\centering\n  \\footnotesize\n  \\setlength{\\tabcolsep}{3pt}\n  \\renewcommand{\\arraystretch}{1.08}\n  \\begin{tabular*}{\\columnwidth}{@{\\extracolsep{\\fill}}lccc@{}}\n    \\toprule\n    Method & Overall & Clean & Random. \\\\\n    \\midrule\n    \\multicolumn{4}{@{}l}{\\textit{OpenWAM}} \\\\\n    OpenWAM & 69.05 & 89.40 & 48.70 \\\\\n    OpenWAM w/ Duo-DiT (native dual) & -- & -- & -- \\\\\n    OpenWAM w/ Duo-DiT (legacy, aborted) & -- & 0.00 & -- \\\\\n    \\addlinespace[2pt]\n    \\multicolumn{4}{@{}l}{\\textit{FLOWER}} \\\\\n    FLOWER (single stream) & -- & -- & -- \\\\\n    FLOWER w/ Duo-DiT (pretrained FlowBlock) & 47.46 & 68.30 & 26.62 \\\\\n    FLOWER w/ custom Duo-DiT (scratch 8x512) & 42.11 & 65.38 & 18.84 \\\\\n    FLOWER w/ custom Duo-DiT + RoPE & 43.03 & 66.50 & 19.56 \\\\\n    \\addlinespace[2pt]\n    \\multicolumn{4}{@{}l}{\\textit{LightWAM}} \\\\\n    LightWAM & -- & -- & -- \\\\\n    LightWAM w/ Duo-DiT & -- & -- & -- \\\\\n    \\bottomrule\n  \\end{tabular*}\n\\end{table}\n",
-  "cross_attention_ablation": "\\begin{table}[t]\n  \\caption{Controlled cross-attention ablation within DuoWAM (RT = RoboTwin 2.0, RD = RoboDojo). Generated from ledger/ (39aa82b, 2026-10-10); edit the YAML, not this file.}\n  \\label{tab:cross_attention_ablation}\n  \\centering\n  \\footnotesize\n  \\setlength{\\tabcolsep}{3pt}\n  \\renewcommand{\\arraystretch}{1.08}\n  \\begin{tabular*}{\\columnwidth}{@{\\extracolsep{\\fill}}lccc@{}}\n    \\toprule\n    Method & Overall & Clean & Random. \\\\\n    \\midrule\n    DuoWAM (bidirectional cross-attention) & -- & -- & -- \\\\\n    DuoWAM w/o cross-attention & -- & -- & -- \\\\\n    \\bottomrule\n  \\end{tabular*}\n\\end{table}\n",
-  "action_partition_ablation": "\\begin{table}[t]\n  \\caption{Action-partition ablation (arm-semantic vs mixed vs joint 14D reference). Generated from ledger/ (39aa82b, 2026-10-10); edit the YAML, not this file.}\n  \\label{tab:action_partition_ablation}\n  \\centering\n  \\footnotesize\n  \\setlength{\\tabcolsep}{3pt}\n  \\renewcommand{\\arraystretch}{1.08}\n  \\begin{tabular*}{\\columnwidth}{@{\\extracolsep{\\fill}}lccc@{}}\n    \\toprule\n    Method & Overall & Clean & Random. \\\\\n    \\midrule\n    Joint 14D reference & -- & -- & -- \\\\\n    Mixed partition & -- & -- & -- \\\\\n    Arm-semantic DuoWAM & -- & -- & -- \\\\\n    \\bottomrule\n  \\end{tabular*}\n\\end{table}\n"
+  "robotwin_main": "\\begin{table}[t]\n  \\caption{Main comparison on RoboTwin 2.0 under the official protocol. All values are success rates (\\%); higher is better. Generated from ledger/ (3338418, 2026-10-10); edit the YAML, not this file.}\n  \\label{tab:robotwin_main}\n  \\centering\n  \\footnotesize\n  \\setlength{\\tabcolsep}{3pt}\n  \\renewcommand{\\arraystretch}{1.08}\n  \\begin{tabular*}{\\columnwidth}{@{\\extracolsep{\\fill}}lccc@{}}\n    \\toprule\n    Method & Overall & Clean & Random. \\\\\n    \\midrule\n    \\multicolumn{4}{@{}l}{\\textit{Single-model policies}} \\\\\n    StarVLA & 24.84 & 46.52 & 3.16 \\\\\n    FLOWER w/ Duo-DiT (pretrained FlowBlock) & 47.46 & 68.30 & 26.62 \\\\\n    FLOWER w/ custom Duo-DiT + RoPE & 43.03 & 66.50 & 19.56 \\\\\n    FLOWER w/ shared-weight Duo ($\\pi$0.5 recipe) & -- & -- & -- \\\\\n    $\\pi$0.5 & 58.35 & 70.70 & 46.00 \\\\\n    SmolVLA (our run) & 16.27 & 29.78 & 2.76 \\\\\n    Fast-WAM & 39.85 & 77.80 & 1.90 \\\\\n    OpenWAM & 69.05 & 89.40 & 48.70 \\\\\n    LightWAM & -- & -- & -- \\\\\n    \\addlinespace[2pt]\n    \\multicolumn{4}{@{}l}{\\textit{Dual-model policies}} \\\\\n    AnyBimanual (RVT-LF / PerAct-LF retrain) & -- & -- & -- \\\\\n    \\addlinespace[2pt]\n    \\multicolumn{4}{@{}l}{\\textit{Ours}} \\\\\n    \\textbf{$\\pi$0.5 w/ Duo-DiT (gate open)} & 63.36 & 80.36 & 46.36 \\\\\n    \\textbf{OpenWAM w/ native dual Duo-DiT} & -- & -- & -- \\\\\n    DuoWAM (Fast-WAM backbone, full model) & -- & -- & -- \\\\\n    \\bottomrule\n  \\end{tabular*}\n\\end{table}\n",
+  "action_head_transfer": "\\begin{table*}[t]\n  \\caption{Transfer of the same Duo-DiT action head across policy backbones on RoboTwin 2.0. All values are success rates (\\%). Generated from ledger/ (3338418, 2026-10-10); edit the YAML, not this file.}\n  \\label{tab:action_head_transfer}\n  \\centering\n  \\footnotesize\n  \\setlength{\\tabcolsep}{3pt}\n  \\renewcommand{\\arraystretch}{1.08}\n  \\begin{tabular*}{\\textwidth}{@{\\extracolsep{\\fill}}lcccccc@{}}\n    \\toprule\n    Base policy & Native overall & Duo overall & Duo clean & Duo random. & $\\Delta$ overall & Status \\\\\n    \\midrule\n    StarVLA & -- & -- & -- & -- & -- & Planned \\\\\n    $\\pi$0.5 & 58.35 & 63.36 & 80.36 & 46.36 & +5.01 & Completed \\\\\n    SmolVLA & 16.27 & -- & -- & -- & -- & Planned \\\\\n    Fast-WAM & 39.85 & -- & -- & -- & -- & Planned \\\\\n    OpenWAM & 69.05 & -- & -- & -- & -- & Evaluating \\\\\n    FLOWER & -- & 47.46 & 68.30 & 26.62 & -- & Completed \\\\\n    \\bottomrule\n  \\end{tabular*}\n\\end{table*}\n",
+  "openwam_flower_duo_dit": "\\begin{table}[t]\n  \\caption{Duo-DiT action-head ablation on OpenWAM, FLOWER, and LightWAM under the RoboTwin 2.0 protocol. Generated from ledger/ (3338418, 2026-10-10); edit the YAML, not this file.}\n  \\label{tab:openwam_flower_duo_dit}\n  \\centering\n  \\footnotesize\n  \\setlength{\\tabcolsep}{3pt}\n  \\renewcommand{\\arraystretch}{1.08}\n  \\begin{tabular*}{\\columnwidth}{@{\\extracolsep{\\fill}}lccc@{}}\n    \\toprule\n    Method & Overall & Clean & Random. \\\\\n    \\midrule\n    \\multicolumn{4}{@{}l}{\\textit{OpenWAM}} \\\\\n    OpenWAM & 69.05 & 89.40 & 48.70 \\\\\n    OpenWAM w/ Duo-DiT (native dual) & -- & -- & -- \\\\\n    OpenWAM w/ Duo-DiT (legacy, aborted) & -- & 0.00 & -- \\\\\n    \\addlinespace[2pt]\n    \\multicolumn{4}{@{}l}{\\textit{FLOWER}} \\\\\n    FLOWER (single stream) & -- & -- & -- \\\\\n    FLOWER w/ Duo-DiT (pretrained FlowBlock) & 47.46 & 68.30 & 26.62 \\\\\n    FLOWER w/ custom Duo-DiT (scratch 8x512) & 42.11 & 65.38 & 18.84 \\\\\n    FLOWER w/ custom Duo-DiT + RoPE & 43.03 & 66.50 & 19.56 \\\\\n    \\addlinespace[2pt]\n    \\multicolumn{4}{@{}l}{\\textit{LightWAM}} \\\\\n    LightWAM & -- & -- & -- \\\\\n    LightWAM w/ Duo-DiT & -- & -- & -- \\\\\n    \\bottomrule\n  \\end{tabular*}\n\\end{table}\n",
+  "cross_attention_ablation": "\\begin{table}[t]\n  \\caption{Controlled cross-attention ablation within DuoWAM (RT = RoboTwin 2.0, RD = RoboDojo). Generated from ledger/ (3338418, 2026-10-10); edit the YAML, not this file.}\n  \\label{tab:cross_attention_ablation}\n  \\centering\n  \\footnotesize\n  \\setlength{\\tabcolsep}{3pt}\n  \\renewcommand{\\arraystretch}{1.08}\n  \\begin{tabular*}{\\columnwidth}{@{\\extracolsep{\\fill}}lccc@{}}\n    \\toprule\n    Method & Overall & Clean & Random. \\\\\n    \\midrule\n    DuoWAM (bidirectional cross-attention) & -- & -- & -- \\\\\n    DuoWAM w/o cross-attention & -- & -- & -- \\\\\n    \\bottomrule\n  \\end{tabular*}\n\\end{table}\n",
+  "action_partition_ablation": "\\begin{table}[t]\n  \\caption{Action-partition ablation (arm-semantic vs mixed vs joint 14D reference). Generated from ledger/ (3338418, 2026-10-10); edit the YAML, not this file.}\n  \\label{tab:action_partition_ablation}\n  \\centering\n  \\footnotesize\n  \\setlength{\\tabcolsep}{3pt}\n  \\renewcommand{\\arraystretch}{1.08}\n  \\begin{tabular*}{\\columnwidth}{@{\\extracolsep{\\fill}}lccc@{}}\n    \\toprule\n    Method & Overall & Clean & Random. \\\\\n    \\midrule\n    Joint 14D reference & -- & -- & -- \\\\\n    Mixed partition & -- & -- & -- \\\\\n    Arm-semantic DuoWAM & -- & -- & -- \\\\\n    \\bottomrule\n  \\end{tabular*}\n\\end{table}\n"
  },
  "per_task": {
   "pi05_duo_open_clean2500": {

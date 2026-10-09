@@ -102,6 +102,23 @@ runs:
     results: {clean: 66.50, random: 19.56, overall: 43.03, clean_n: 3325/5000, random_n: 978/5000}
     per_task: ledger/per_task/flower_customduodit_rope_clean2500.json
     notes: "Overleaf row 'Flower(+ROPE duo dit)'. The 'flower_eval_summary.json' in deleted_weight_evidence is this run (1.31 GB weight = custom head size), not a single-stream FLOWER. 2026-10-10 last.pt: |tanh(g)| <= 0.091 -> coupling essentially closed."
+  - id: flower_sharedduo_clean2500
+    label: "FLOWER + shared-weight Duo (π0.5-Duo recipe)"
+    family: flower
+    backbone: "FLOWER VLA (Florence-2-base) + pretrained FLOWER head, one shared FlowBlock expert"
+    variant: flower_duo_shared
+    protocol: robotwin2_official
+    data: same cache as flower_duodit_clean2500
+    params: {total: 440.0M, trainable: 416.8M, counted: 2026-10-10}
+    status: planned
+    train: {max_steps: 60000, min_steps: 15000, global_batch: 32, per_gpu_batch: 2, accum: 4, gpus: 4, lr_head: 1e-4, lr_vlm: 2e-5, wd: 0.01, val_every: 2000, patience: 6, seed: 42, gate: open, selection: best val loss}
+    machine: "to be run by a teammate (4 GPUs train, 4 GPUs eval)"
+    code:
+      source: "/mnt/workspace/yangyq/flower_sharedduo_robotwin: flower_sharedduo.py, train.py, train.sh, eval.sh, policy_server.py, run_eval_fast.py, eval_adapter/"
+      repo: recipes/flower_shared_duo/
+    eval: {episodes: 100, runner: eval.sh (run_eval_fast.py)}
+    results: {clean: null, random: null, overall: null}
+    notes: "Answers whether a shared-weight Duo helps FLOWER, since the two-copy FlowBlock Duo never opened its cross-arm gains. CPU smoke + 2-step train/resume verified 2026-10-10; not yet run on GPU."
   - id: smolvla_clean2500
     label: "SmolVLA (native, our training)"
     family: smolvla

@@ -180,3 +180,19 @@ variants:
     code: ~/QuicData/YYQ_Quic_EX/duo_jepa (Codeup YYQ_Quic_EX), cluster /mnt/cpfs/yangyq/code/duo_jepa
     repo: (lives in YYQ_Quic_EX; uses the same CrossArm as duo/coupling.py)
     runs: [none yet — GPU approval pending]
+  - id: flower_duo_shared
+    name: "FLOWER + shared-weight Duo (π0.5-Duo recipe on FLOWER)"
+    date: 2026-10-10
+    host: "FLOWER VLA, Florence-2-base, author's pretrained FLOWER head; ONE Florence pass over head + left wrist + right wrist + prompt + text"
+    streams: "one shared pretrained FlowBlock expert (12×1024) over [s_L, 50 left tokens, s_R, 50 right tokens], RoPE positions 0..50 per arm, stream embeddings; per-arm in/out projections sliced from the pretrained 16-d encoder (fc1 columns) / decoder (rows); own-state token zero-init + presence flag"
+    stream_dim: 7
+    coupling: "self-attention mask: time-causal over both arms; cross-stream blocks open when gate = 1 (no extra modules, nothing to learn open)"
+    gate: "open (default, = official π0.5-Duo run); closed = per-arm shared-weight ablation"
+    aux: none
+    init: "pretrained FLOWER head (240/264 DiT tensors), slices for the per-arm projections, state tokens zero"
+    params: "440.0M total / 416.8M trainable (≈ single-stream FLOWER 437.8M)"
+    diff_from: "flower_duo_flowblock — one shared expert instead of two copies, mask instead of CrossArm+tanh gain, state as token instead of adaLN, one Florence pass with all three cameras"
+    code: /mnt/workspace/yangyq/flower_sharedduo_robotwin/flower_sharedduo.py
+    repo: recipes/flower_shared_duo/flower_sharedduo.py
+    runs: [flower_sharedduo_clean2500]
+

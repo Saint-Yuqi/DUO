@@ -186,7 +186,7 @@ kbd { font: 12px var(--font-mono); background: var(--code); padding: 1px 5px; bo
     const v = D.variants.find(x => x.id === r.variant);
     return `<div class="grid">
       <dl><dt>Run</dt><dd><code>${esc(r.id)}</code> — ${esc(r.label)}</dd><dt>Backbone</dt><dd>${esc(r.backbone)}</dd><dt>Head version</dt><dd>${v ? `<a href="#v-${esc(v.id)}">${esc(v.name)}</a>` : esc(r.variant)}</dd><dt>Data</dt><dd>${esc(r.data)}</dd><dt>Protocol</dt><dd><code>${esc(r.protocol)}</code> — ${esc((D.protocols[r.protocol] || {}).name || "")}</dd></dl>
-      <dl><dt>Training</dt><dd>${kv(r.train)}</dd><dt>Machine</dt><dd>${esc(r.machine)}</dd><dt>Dates</dt><dd>${kv(r.dates)}</dd><dt>Evaluation</dt><dd>${kv(r.eval)}</dd><dt>Results</dt><dd>${kv(r.results)}</dd></dl>
+      <dl>${r.params ? `<dt>Parameters</dt><dd>${kv(r.params)}</dd>` : ""}<dt>Training</dt><dd>${kv(r.train)}</dd><dt>Machine</dt><dd>${esc(r.machine)}</dd><dt>Dates</dt><dd>${kv(r.dates)}</dd><dt>Evaluation</dt><dd>${kv(r.eval)}</dd><dt>Results</dt><dd>${kv(r.results)}</dd></dl>
       <dl><dt>Code</dt><dd>${kv(r.code)}</dd><dt>Weights</dt><dd>${kv(r.weights)}</dd><dt>Notes</dt><dd>${esc(r.notes || "")}</dd>${tasks}</dl></div>`;
   }
   function rowHTML(r) {
@@ -213,7 +213,7 @@ kbd { font: 12px var(--font-mono); background: var(--code); padding: 1px 5px; bo
 
   // variants
   $("#variants-root").innerHTML = D.variants.map(v => `<div class="v" id="v-${esc(v.id)}"><div class="head"><b>${esc(v.name)}</b><span class="date">${esc(v.date)} · <code>${esc(v.id)}</code></span></div>
-    <div class="grid"><div><b>Host</b>${esc(v.host)}</div><div><b>Streams</b><span class="stream l"></span><span class="stream r"></span>${esc(v.streams)} <span class="note">(${esc(v.stream_dim)}-d each)</span></div><div><b>Coupling</b>${esc(v.coupling)}</div><div><b>Gate</b>${esc(v.gate)}</div><div><b>Auxiliary objective</b>${esc(v.aux || "none")}</div><div><b>Init</b>${esc(v.init)}</div><div><b>Code</b>${esc(v.code)}<br><span class="note">repo: ${esc(v.repo)}</span></div><div><b>Runs</b>${esc((v.runs || []).join(", "))}</div></div>
+    <div class="grid"><div><b>Host</b>${esc(v.host)}</div><div><b>Streams</b><span class="stream l"></span><span class="stream r"></span>${esc(v.streams)} <span class="note">(${esc(v.stream_dim)}-d each)</span></div><div><b>Coupling</b>${esc(v.coupling)}</div><div><b>Gate</b>${esc(v.gate)}</div><div><b>Auxiliary objective</b>${esc(v.aux || "none")}</div><div><b>Init</b>${esc(v.init)}</div>${v.params ? `<div><b>Parameters</b>${esc(v.params)}</div>` : ""}<div><b>Code</b>${esc(v.code)}<br><span class="note">repo: ${esc(v.repo)}</span></div><div><b>Runs</b>${esc((v.runs || []).join(", "))}</div></div>
     ${v.diff_from ? `<div class="diff"><b>Changed:</b> ${esc(v.diff_from)}</div>` : ""}</div>`).join("");
 
   // protocols

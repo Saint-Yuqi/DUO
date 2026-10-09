@@ -106,6 +106,7 @@ variants:
     gate: none (always coupled)
     aux: "none"
     init: pretrained FLOWER head for both streams (deepcopy)
+    params: "721.2M total / 688.6M trainable; VLM = Florence-2-base 173.9M (not large); the authors' pretrained head expects a 1024-d VLM (Florence-2-large) so cond_linear 1024×768 and cond_norm are new (2 shape mismatches, 240/264 DiT tensors loaded)"
     code: /mnt/workspace/yangyq/flower_duodit_robotwin/flower_duodit.py
     repo: duo/adapters/flower_flowblock.py
     runs: [flower_duodit_clean2500]
@@ -120,6 +121,7 @@ variants:
     aux: "none"
     init: from scratch (FLOWER head weights cannot initialise these blocks)
     diff_from: flower_duo_flowblock — stream architecture (8x512 scratch vs 12x1024 pretrained), qk-norm CrossArm, gate plumbing
+    params: "287.8M total / 278.7M trainable; VLM = Florence-2-base 173.9M"
     code: /mnt/workspace/yangyq/flower_customduodit_robotwin/custom_dit.py
     repo: "duo/adapters/flower_custom_dit.py (library form: duo/head.py DuoFlowHead)"
     runs: [flower_customduodit_clean2500]
@@ -134,6 +136,7 @@ variants:
     aux: "none"
     init: from scratch
     diff_from: flower_duo_custom — RoPE (action_rope.enable_rope) in every stream self-attention and in CrossArm; no learned positions
+    params: "287.8M total / 278.7M trainable; VLM = Florence-2-base 173.9M"
     code: /tmp/robotwin_rope/flower/custom_dit.py (quic5000 /tmp, not persistent)
     repo: duo/adapters/flower_custom_dit_rope.py, duo/adapters/legacy/action_rope.py
     runs: [flower_customduodit_rope_clean2500]

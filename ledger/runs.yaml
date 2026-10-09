@@ -36,6 +36,7 @@ runs:
     variant: flower_duo_flowblock
     protocol: robotwin2_official
     data: "clean2500 frame cache /mnt/workspace/yangyq/data/flower_robotwin_clean2500 (224², 3 cams; OSS backup oss://quic-research/yangyq/data/cache/flower_robotwin_clean2500/)"
+    params: {total: 721.2M, trainable: 688.6M, vlm: "173.9M Florence-2-base (DaViT 90.4M + BART-base encoder 82.7M incl. 39.4M embeddings; decoder dropped)", streams: "2 × 226.6M FlowBlock (12×1024)", cross_arm: "2 × 16.8M", frozen_dead_banks: 32.6M, counted: 2026-10-10 by instantiating FlowerDuoDiT on quic5000}
     status: complete
     dates: {train_start: 2026-10-03, train_end: 2026-10-04, eval_end: 2026-10-05}
     train: {max_steps: 60000, best_step: 56000, global_batch: 32, per_gpu_batch: 2, accum: 4, gpus: 4, lr_head: 1e-4, lr_vlm: 2e-5, val_every: 2000, patience: 6, seed: 42, selection: best val loss}
@@ -59,6 +60,7 @@ runs:
     variant: flower_duo_custom
     protocol: robotwin2_official
     data: same cache as flower_duodit_clean2500
+    params: {total: 287.8M, trainable: 278.7M, vlm: "173.9M Florence-2-base", streams: "2 × 48.0M ArmHead (8×512)", cross_arm: "2 × 4.2M", frozen_dead_banks: 9.1M, counted: 2026-10-10}
     status: complete
     dates: {train_start: 2026-10-04, eval_end: 2026-10-05}
     train: {max_steps: 60000, best_step: 58000, global_batch: 32, per_gpu_batch: 8, accum: 1, gpus: 4, lr_head: 1e-4, lr_vlm: 2e-5, seed: 42, selection: best val loss}
@@ -82,6 +84,7 @@ runs:
     variant: flower_duo_custom_rope
     protocol: robotwin2_official
     data: same cache
+    params: {total: 287.8M, trainable: 278.7M, note: "same as flower_customduodit_clean2500 minus the learned act_pos (RoPE has no parameters)", counted: 2026-10-10}
     status: complete
     dates: {train_start: 2026-10-05, eval_end: 2026-10-06}
     train: {max_steps: 60000, global_batch: 32, per_gpu_batch: 8, accum: 1, gpus: 4, lr_head: 1e-4, lr_vlm: 2e-5, seed: 42}

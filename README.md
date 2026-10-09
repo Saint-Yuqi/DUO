@@ -57,7 +57,7 @@ chunk = head.sample(ctx)                                          # (B, 50, 14)
 | variant (ledger id) | host / observation per stream | stream blocks | cross-arm attention | gate | init | auxiliary objective | action |
 |---|---|---|---|---|---|---|---|
 | DINO-DiT Duo (`dit_duo_v1/v2`; parcel sorting, R3) | DINOv2-B tokens: head + own wrist, own 7-D state (+2 flags) | 2 × (8 × 512 adaLN-zero DiT) | own `Attention`, qk-norm, blocks 2,4,6,8 | rule (v1) / rule∨head (v2) / **1.0 deployed** | scratch, or from two per-arm checkpoints | **FLARE future tokens** (below); v2 adds a future-contact head | chunk_delta joints, H=50 |
-| FLOWER FlowBlock Duo (`flower_duo_flowblock`) | Florence-2 encoder run once per wrist (head + own wrist + prompt + text); own 7-D state | 2 × (12 × 1024 FlowBlock, pretrained) | `nn.MultiheadAttention`, no qk-norm, 2,4,6,8 | none (always 1) | pretrained FLOWER head, right = deepcopy | none | abs joints, H=50 |
+| FLOWER FlowBlock Duo (`flower_duo_flowblock`) | Florence-2-**base** encoder (173.9M; large exists on the cluster but was not used) run once per wrist (head + own wrist + prompt + text); own 7-D state | 2 × (12 × 1024 FlowBlock, pretrained) | `nn.MultiheadAttention`, no qk-norm, 2,4,6,8 | none (always 1) | pretrained FLOWER head, right = deepcopy | none | abs joints, H=50 |
 | FLOWER custom Duo (`flower_duo_custom`, `+RoPE`) | same Florence-2 tokens | 2 × (8 × 512 DiTBlock, scratch) | own `Attention`, qk-norm (+RoPE) | from batch, 1 when absent | scratch | none | abs joints |
 | π0.5-Duo (`pi05_duo_v1/_open/_v2/_v3`) | shared PaliGemma prefix; suffix `[s_L, 50 L tokens, s_R, 50 R tokens]` | **one** shared pretrained expert, stream embeddings | block mask inside the suffix self-attention (no extra module) | rule / anticipatory+head / **1 (official run)** | sliced 32-d projections | v2: future-contact head (modes + coupled-in-25) | abs joints |
 | OpenWAM native dual (`openwam_native_dual`) | Wan2.2 video DiT tokens (MoT), 384×320 canvas | 2 × full pretrained ActionDiT (30 × 1024) | va_b `CrossArm` + RoPE, every even layer | none | sliced encoder/decoder, blocks copied | host video DiT trained (λ_video = 1) | 10-D EEF per arm, H=50 |
@@ -67,6 +67,11 @@ chunk = head.sample(ctx)                                          # (B, 50, 14)
 So the FLARE-style future tokens are **not** in every Duo: they exist only in the DINO-DiT family (R-series, the deployed
 parcel-sorting model, duo_jepa). FLOWER-Duo, π0.5-Duo and Fast-WAM-Duo have no future objective; OpenWAM native dual gets its
 future signal from the host's own video objective instead.
+
+Parameter counts (instantiated on the cluster, 2026-10-10): FLOWER FlowBlock Duo 721.2M total / 688.6M trainable (VLM 173.9M + 2 × 226.6M
+streams + 2 × 16.8M cross-arm); FLOWER custom Duo (± RoPE) 287.8M / 278.7M (VLM 173.9M + 2 × 48.0M streams + 2 × 4.2M cross-arm);
+single-stream FlowerBimanual reference 437.8M / 416.8M. All FLOWER runs use Florence-2-base with the decoder dropped; the authors'
+pretrained FLOWER head was trained on Florence-2-large (1024-d), so its `cond_linear`/`cond_norm` do not load and are re-initialised.
 
 ### FLARE-style future tokens (DINO-DiT family)
 An implicit world-model loss: predict the frozen DINO features of the frame at the end of the chunk, no pixels generated.

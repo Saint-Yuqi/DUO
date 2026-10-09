@@ -9,6 +9,7 @@ variants:
     stream_dim: 7 joints+gripper per arm
     coupling: CrossArm (own Attention, qk-norm off in v1) after blocks 2,4,6,8, both directions, separate weights, tanh gain zero-init
     gate: FK contact rule (S/A frames -> 1) from contact_v1.npy at train, contact_rules.gate_online at eval; cross_drop optional
+    aux: "FLARE future tokens: 32 query tokens per stream predict frozen-DINOv2 4×4 features of head + own wrist at t+50 (read out after block 4, LN+Linear 512→768, MSE, weight 0.1)"
     init: from scratch (R3) or from two per-arm R0 checkpoints via rt/make_duo_init.py (R3b/R3c)
     code: /mnt/cpfs/yangyq/code/va_bimanual_b/models/duo_dit.py
     repo: duo/adapters/dino_dit_va_b.py
@@ -21,6 +22,7 @@ variants:
     stream_dim: 7
     coupling: same
     gate: rule OR learned head (--head_contact, DUO_EVAL_GATE = or|head|rule); per-step loss weights around contact transitions (loss_step_w)
+    aux: "FLARE future tokens (as v1) + future-contact head (5 modes × H + coupling logit, CE/BCE weight head_w)"
     init: same
     diff_from: dit_duo_v1 — adds contact_head (5 future modes x H + coupling logit) on the two pooled conditioners, aux CE/BCE loss (head_w), step weights
     code: /mnt/cpfs/yangyq/code/va_bimanual_b/models/duo_dit.py (backup .bak_duov2_0925 = v1)
@@ -34,6 +36,7 @@ variants:
     stream_dim: 7
     coupling: block mask inside the suffix self-attention — gate 0 = the two streams cannot see each other (two per-arm experts over one prefix), gate 1 = the original joint expert
     gate: contact rule (gate_train on raw state/chunk) at train; gate_online from measured state at eval; duo_g3 adds zzm's g3 state hiding
+    aux: "none"
     init: pretrained π0.5 base (zzm RoboTwin base ckpt)
     code: /mnt/cpfs/yangyq/pi05_duo/comparison.py (variants duo, duo_g3)
     repo: duo/adapters/pi05_lerobot/comparison.py
@@ -46,6 +49,7 @@ variants:
     stream_dim: 7
     coupling: same block structure but gate forced to 1 for every sample (DUO_TRAIN_GATE=1) — the streams always attend each other
     gate: none (always coupled)
+    aux: "none"
     init: pretrained π0.5 base
     diff_from: pi05_duo_v1 — only the gate; this is what the official-protocol number 80.36 / 46.36 was produced with
     code: /mnt/cpfs/yangyq/pi05_duo/comparison.py + runs/duo_open_clean2500/train.json
@@ -59,6 +63,7 @@ variants:
     stream_dim: 7
     coupling: same
     gate: train gate = coupled anywhere in the next 25 steps (simulator ground-truth labels contact_v2); eval gate = head prediction OR causal rule; ablations nohead / nocp / l1 / appr / ovs / gate / sg
+    aux: "future-contact head on pooled prefix + own states (5 modes per step + coupled-within-25 logit, aux 0.2); not a visual-feature target"
     init: pretrained π0.5 base
     diff_from: pi05_duo_v1 — labels from simulator replay, anticipatory gate, per-step weights 1+4·exp(-d/5), aux head 0.2
     code: /mnt/cpfs/yangyq/pi05_duo/comparison.py
@@ -72,6 +77,7 @@ variants:
     stream_dim: 7
     coupling: same
     gate: as v2
+    aux: "C=10 contact tokens inside the suffix predicting future contact modes"
     init: pretrained π0.5 base
     diff_from: pi05_duo_v2 — ME-Dex style consequence tokens instead of a pooled head
     code: /mnt/cpfs/yangyq/pi05_duo/comparison.py (duo_v3, duo_v3_frz)
@@ -85,6 +91,7 @@ variants:
     stream_dim: 7
     coupling: the MoT self-attention between the two token halves (duo_cross=true = always open; false = masked off). No CrossArm modules.
     gate: none
+    aux: "none (video expert frozen in stage 1, lambda_video not trained)"
     init: official robotwin_uncond_3cam_384.pt (sees randomized scenes -> not leaderboard protocol)
     code: /mnt/cpfs/yangyq/code/duo_fastwam/apply_duo_patch.py (DuoActionDiT in src/fastwam/models/wan22/action_dit.py)
     repo: duo/adapters/fastwam_shared_stream.py, duo/adapters/legacy/fastwam_apply_duo_patch.py
@@ -97,6 +104,7 @@ variants:
     stream_dim: 7
     coupling: CrossArm = nn.MultiheadAttention (no qk-norm, no RoPE) after blocks 2,4,6,8, both directions, tanh gain zero-init
     gate: none (always coupled)
+    aux: "none"
     init: pretrained FLOWER head for both streams (deepcopy)
     code: /mnt/workspace/yangyq/flower_duodit_robotwin/flower_duodit.py
     repo: duo/adapters/flower_flowblock.py
@@ -109,6 +117,7 @@ variants:
     stream_dim: 7
     coupling: CrossArm (va_bimanual_b, qk-norm) after blocks 2,4,6,8
     gate: "contact_gate from batch, open when absent (RoboTwin: always open)"
+    aux: "none"
     init: from scratch (FLOWER head weights cannot initialise these blocks)
     diff_from: flower_duo_flowblock — stream architecture (8x512 scratch vs 12x1024 pretrained), qk-norm CrossArm, gate plumbing
     code: /mnt/workspace/yangyq/flower_customduodit_robotwin/custom_dit.py
@@ -122,6 +131,7 @@ variants:
     stream_dim: 7
     coupling: same, RoPE inside the CrossArm attention too
     gate: same
+    aux: "none"
     init: from scratch
     diff_from: flower_duo_custom — RoPE (action_rope.enable_rope) in every stream self-attention and in CrossArm; no learned positions
     code: /tmp/robotwin_rope/flower/custom_dit.py (quic5000 /tmp, not persistent)
@@ -135,6 +145,7 @@ variants:
     stream_dim: 7
     coupling: CrossArm every 2nd layer
     gate: none
+    aux: "none (lambda_video 0, video frozen)"
     init: OpenWAM-Alpha pretrain foundation model; action head new
     code: /mnt/workspace/yangyq/openwam_duodit_robotwin (train_robotwin_duo_dit.sh, _stage2.sh); model file in the OpenWAM source tree (not copied)
     repo: (not copied — superseded)
@@ -147,6 +158,7 @@ variants:
     stream_dim: 10 (EEF)
     coupling: MoT mask blocks left<->right; CrossArm (va_bimanual_b CrossArm, qk-norm) + RoPE after every even layer (15 per direction), tanh gain zero-init
     gate: none
+    aux: "host video DiT trained jointly (lambda_video 1): future-frame latent denoising is the world-model signal; no FLARE tokens in the action head"
     init: native_dual_warm_start — every pretrained tensor copied to both arms, action_encoder columns / action_decoder rows sliced per arm; CrossArm new
     diff_from: openwam_duo_legacy — pretrained experts instead of new streams, EEF instead of joints, video expert trained, official 5-epoch recipe
     code: /tmp/robotwin_native_dual/native_dual_dit.py + install_native_dual.py (quic5000 /tmp, not persistent)
@@ -160,6 +172,7 @@ variants:
     stream_dim: 7
     coupling: GatedCross, gate = sigmoid(w·s2) learned from the shared JEPA latent (or none / rule)
     gate: learned | none | rule
+    aux: "FLARE future tokens (head weighted by predictability map) + per-arm JEPA (state alignment, own-arm IDM) + shared JEPA level (SIGReg, predictor, joint IDM)"
     init: from scratch
     code: ~/QuicData/YYQ_Quic_EX/duo_jepa (Codeup YYQ_Quic_EX), cluster /mnt/cpfs/yangyq/code/duo_jepa
     repo: (lives in YYQ_Quic_EX; uses the same CrossArm as duo/coupling.py)

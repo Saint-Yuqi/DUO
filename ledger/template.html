@@ -213,7 +213,7 @@ kbd { font: 12px var(--font-mono); background: var(--code); padding: 1px 5px; bo
 
   // variants
   $("#variants-root").innerHTML = D.variants.map(v => `<div class="v" id="v-${esc(v.id)}"><div class="head"><b>${esc(v.name)}</b><span class="date">${esc(v.date)} · <code>${esc(v.id)}</code></span></div>
-    <div class="grid"><div><b>Host</b>${esc(v.host)}</div><div><b>Streams</b><span class="stream l"></span><span class="stream r"></span>${esc(v.streams)} <span class="note">(${esc(v.stream_dim)}-d each)</span></div><div><b>Coupling</b>${esc(v.coupling)}</div><div><b>Gate</b>${esc(v.gate)}</div><div><b>Init</b>${esc(v.init)}</div><div><b>Code</b>${esc(v.code)}<br><span class="note">repo: ${esc(v.repo)}</span></div><div><b>Runs</b>${esc((v.runs || []).join(", "))}</div></div>
+    <div class="grid"><div><b>Host</b>${esc(v.host)}</div><div><b>Streams</b><span class="stream l"></span><span class="stream r"></span>${esc(v.streams)} <span class="note">(${esc(v.stream_dim)}-d each)</span></div><div><b>Coupling</b>${esc(v.coupling)}</div><div><b>Gate</b>${esc(v.gate)}</div><div><b>Auxiliary objective</b>${esc(v.aux || "none")}</div><div><b>Init</b>${esc(v.init)}</div><div><b>Code</b>${esc(v.code)}<br><span class="note">repo: ${esc(v.repo)}</span></div><div><b>Runs</b>${esc((v.runs || []).join(", "))}</div></div>
     ${v.diff_from ? `<div class="diff"><b>Changed:</b> ${esc(v.diff_from)}</div>` : ""}</div>`).join("");
 
   // protocols

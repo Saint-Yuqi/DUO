@@ -3,6 +3,20 @@
 这个仓库维护三样东西：**Duo 动作头本体**（`duo/`，可插到任何 backbone）、**每个 backbone 里实际跑过的原码**（`duo/adapters/`，逐字拷贝 + 出处），
 以及**实验台账**（`ledger/*.yaml` → `docs/index.html` 网页 + `paper/tables/*.tex` 论文表）。两个远端同步：GitHub `origin` 与 Codeup `codeup`。
 
+## 架构要点（详表见 README.md 的 Architecture 一节）
+
+所有 Duo 共有的：每臂一条动作 token 流（7 维关节或 OpenWAM 的 10 维 EEF），两流共享时间轴；两臂只通过每两层一次的跨臂注意力通信，
+残差乘 tanh(增益)、增益零初始化，所以初始化时等于两个独立的单臂专家；逐样本门 g 可开关（部署配方里恒为 1）；另一臂的原始关节不进任何一条流；
+有预训练单流专家时按臂切列/切行热启动；流匹配训练。
+
+**不是所有 Duo 都有的**：FLARE 式未来 token（预测 t+50 帧的冻结 DINO 4×4 特征，权重 0.1）只在 DINO-DiT 一族里（R 系列、供包部署模型、duo_jepa）。
+FLOWER-Duo、π0.5-Duo、Fast-WAM-Duo 没有未来目标；OpenWAM native dual 的未来信号来自宿主自己训练的视频 DiT。π0.5-Duo v2 的辅助头预测的是接触模式，
+不是视觉特征。各变体的流结构、跨臂实现、门、初始化、辅助目标、动作表示逐项列在 README.md 的 Variant matrix 里，台账网页「Head versions」一节同步显示。
+
+供包部署版（DIT_Yuqi `duo_box.yaml`）：三相机 224²、14 维关节 + 2 存在位（proprio dropout 0.3）、DINOv2-B 0.1 倍学习率微调、两条 8×512 流、
+跨臂 2/4/6/8 门恒开、chunk_delta 增量动作 H=50、未来 token 4×4@t+50、lr 4e-4、全局 batch 512、17.5k 步约 3 遍盒子帧、部署最后一步 EMA；
+dit_mit 30 Hz，RTC chunk 35 / exec 15，双臂一次推理约 100 ms。
+
 ## 日常
 ```bash
 git pull                                    # 本机 ~/QuicData/DUO；Mac 用 /Library/Developer/CommandLineTools/usr/bin/git

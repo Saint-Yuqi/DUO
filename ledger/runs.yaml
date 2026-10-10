@@ -112,15 +112,15 @@ runs:
     params: {total: 440.0M, trainable: 416.8M, counted: 2026-10-10}
     status: training
     dates: {train_start: 2026-10-10}
-    train: {max_steps: 3750, min_steps: 940, global_batch: 512, per_gpu_batch: 64, accum: 1, gpus: 8, lr_head: 4e-4, lr_vlm: 8e-5, lr_rule: "sqrt(512/32) = 4x the FlowBlock-Duo lr", samples: "1.92M = same budget as flower_duodit_clean2500 (60k x 32), ~3.5 epochs", warmup: 500, schedule: "cosine to 10%", wd: 0.01, val_every: 125, patience: 6, seed: 42, gate: open, selection: best val loss, step_time_s: 0.8}
+    train: {max_steps: 20000, min_steps: 6000, global_batch: 512, per_gpu_batch: 64, accum: 1, gpus: 8, lr_head: 4e-4, lr_vlm: 8e-5, lr_rule: "sqrt(512/32) = 4x the FlowBlock-Duo lr", warmup: 500, schedule: "cosine to 10% over 20k", wd: 0.01, val_every: 250, patience: 8, seed: 42, gate: open, selection: best val loss, step_time_s: 0.8}
     machine: "quic5001 GPU0-7 (8×H20); eval on the same 8 GPUs × 6 simulator workers, launched automatically after training"
     code:
-      source: "/mnt/workspace/yangyq/flower_sharedduo_robotwin: run_bs512.sh -> train.sh -> train.py; eval.sh -> run_eval_fast.py"
+      source: "/mnt/workspace/yangyq/flower_sharedduo_robotwin: run_bs512_long.sh -> train.sh -> train.py; eval.sh -> run_eval_fast.py"
       repo: recipes/flower_shared_duo/
     weights: {path: /mnt/workspace/yangyq/flower_sharedduo_robotwin/training/best.pt, persistent: true}
     eval: {episodes: 100, runner: eval.sh (run_eval_fast.py), log: run_bs512.log / eval.log}
     results: {clean: null, random: null, overall: null}
-    notes: "Batch probe on one H20: per-GPU 16/32/48/64 -> 20.5/35.2/50.1/64.7 GiB and 61.6/76.1/80.6/83.5 samples/s; 96 OOM -> 64 chosen. Differs from flower_duodit_clean2500 in model AND batch/lr (512 vs 32, sqrt-scaled lr), same sample budget."
+    notes: "Batch probe on one H20: per-GPU 16/32/48/64 -> 20.5/35.2/50.1/64.7 GiB and 61.6/76.1/80.6/83.5 samples/s; 96 OOM -> 64 chosen. Differs from flower_duodit_clean2500 in model AND batch/lr (512 vs 32, sqrt-scaled lr), same sample budget. First attempt (run_bs512.sh, 3750 steps = the FlowBlock-Duo sample budget of 1.92M, 53 min) under-fitted: best val 0.0293 at step 3625 and still falling, vs 0.0065 for the bs-32 FlowBlock-Duo run; its eval was stopped before any episode and the weights kept in training_bs512_s3750/. Relaunched to convergence with early stopping (run_bs512_long.sh)."
   - id: smolvla_clean2500
     label: "SmolVLA (native, our training)"
     family: smolvla

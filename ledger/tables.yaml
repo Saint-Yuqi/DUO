@@ -93,6 +93,9 @@ tables:
             run: flower_customduodit_clean2500
           - label: "FLOWER w/ custom Duo-DiT + RoPE"
             run: flower_customduodit_rope_clean2500
+          - label: "FLOWER w/ shared-weight Duo (π0.5 recipe)"
+            run: flower_sharedduo_clean2500
+            bold: true
       - name: LightWAM
         rows:
           - label: "LightWAM"

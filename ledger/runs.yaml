@@ -110,17 +110,18 @@ runs:
     protocol: robotwin2_official
     data: same cache as flower_duodit_clean2500
     params: {total: 440.0M, trainable: 416.8M, counted: 2026-10-10}
-    status: evaluating
-    dates: {train_start: 2026-10-10, train_end: 2026-10-10, eval_start: 2026-10-10}
+    status: complete
+    dates: {train_start: 2026-10-10, train_end: 2026-10-10, eval_start: 2026-10-10, eval_end: 2026-10-10}
     train: {max_steps: 20000, min_steps: 6000, global_batch: 512, per_gpu_batch: 64, accum: 1, gpus: 8, lr_head: 4e-4, lr_vlm: 8e-5, lr_rule: "sqrt(512/32) = 4x the FlowBlock-Duo lr", warmup: 500, schedule: "cosine to 10% over 20k", wd: 0.01, val_every: 250, patience: 8, seed: 42, gate: open, selection: best val loss, step_time_s: 0.8, ran: "20000 steps in 272 min, no early stop", best_val: "0.02254 at step 19750 (curve flattening: 0.0235 at 17k)"}
     machine: "quic5001 GPU0-7 (8×H20); eval on the same 8 GPUs × 6 simulator workers, launched automatically after training"
     code:
       source: "/mnt/workspace/yangyq/flower_sharedduo_robotwin: run_bs512_long.sh -> train.sh -> train.py; eval.sh -> run_eval_fast.py"
       repo: recipes/flower_shared_duo/
-    weights: {path: /mnt/workspace/yangyq/flower_sharedduo_robotwin/training/best.pt, persistent: true}
+    weights: {path: "/mnt/workspace/yangyq/flower_sharedduo_robotwin/training/best.pt (step 19750, 1.9 GB; = /mnt/cpfs/yangyq/... on 8092)", persistent: true, backup: "none yet (CPFS 100% full on 2026-10-11)"}
     eval: {episodes: 100, runner: eval.sh (run_eval_fast.py), log: run_bs512.log / eval.log}
-    results: {clean: null, random: null, overall: null}
-    notes: "Batch probe on one H20: per-GPU 16/32/48/64 -> 20.5/35.2/50.1/64.7 GiB and 61.6/76.1/80.6/83.5 samples/s; 96 OOM -> 64 chosen. Differs from flower_duodit_clean2500 in model AND batch/lr (512 vs 32, sqrt-scaled lr), same sample budget. First attempt (run_bs512.sh, 3750 steps = the FlowBlock-Duo sample budget of 1.92M, 53 min) under-fitted: best val 0.0293 at step 3625 and still falling, vs 0.0065 for the bs-32 FlowBlock-Duo run; its eval was stopped before any episode and the weights kept in training_bs512_s3750/. Relaunched to convergence with early stopping (run_bs512_long.sh)."
+    results: {clean: 77.80, random: 37.76, overall: 57.78, clean_n: 3890/5000, random_n: 1888/5000}
+    per_task: ledger/per_task/flower_sharedduo_clean2500.json
+    notes: "Batch probe on one H20: per-GPU 16/32/48/64 -> 20.5/35.2/50.1/64.7 GiB and 61.6/76.1/80.6/83.5 samples/s; 96 OOM -> 64 chosen. Differs from flower_duodit_clean2500 in model AND batch/lr (512 vs 32, sqrt-scaled lr), same sample budget. First attempt (run_bs512.sh, 3750 steps = the FlowBlock-Duo sample budget of 1.92M, 53 min) under-fitted: best val 0.0293 at step 3625 and still falling, vs 0.0065 for the bs-32 FlowBlock-Duo run; its eval was stopped before any episode and the weights kept in training_bs512_s3750/. Relaunched to convergence with early stopping (run_bs512_long.sh). Eval 2026-10-10 16:37 -> 23:27 (48 workers on 8 GPUs). Paired per-task vs flower_duodit_clean2500: clean +9.50 (t=5.6, 40/7 tasks), random +11.14 (t=7.3, 45/4); vs pi05_duo_open_clean2500: clean -2.56 (t=-1.3), random -8.60 (t=-3.5)."
   - id: smolvla_clean2500
     label: "SmolVLA (native, our training)"
     family: smolvla
